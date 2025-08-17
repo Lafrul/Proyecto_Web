@@ -89,12 +89,25 @@ nav a#enlace-carrito:hover {
     background-color: var(--color-hover-btn);
 }
 
+#muestra-productos {
+    div {
+        display: flex;
+        flex-direction: row;
+        img {
+            width: 25vw;
+            border-radius: 20px;
+            filter: brightness(1.2) contrast(1.25) saturate(1) hue-rotate(-5deg);
+        }
+    }
+}
+
 #descripcion {
     display: flex;
     flex-direction: row;
     img {
         width: 50vw;
         margin-right: 30px;
+        filter: brightness(1) contrast(1.25) saturate(1.2) hue-rotate(-5deg);
     }
     article {
         h2 {
