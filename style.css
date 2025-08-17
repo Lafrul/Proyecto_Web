@@ -1,0 +1,30 @@
+:root {
+    --color-header: #20651d;
+}
+
+body {
+    font-family: "montserrat", sans-serif;
+    margin-inline: 0px;
+}
+
+header {
+    background-color: var(--color-header);
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    a {
+        color: white;
+        text-decoration: none;
+    }
+    #carrito {
+        filter: invert(1);
+        width: 20px;
+    }
+}
+
+#portada {
+    background-image: url("portada_provisional.png");
+    height: 35vw;
+    background-size: cover;
+}
