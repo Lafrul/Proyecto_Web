@@ -90,13 +90,31 @@ nav a#enlace-carrito:hover {
 }
 
 #muestra-productos {
+    padding-top: 40px;
+    padding-bottom: 30px;
+    padding-inline: 65px;
+    h2 {
+        color: var(--color-header);
+        font-size: 34px;
+    }
     div {
         display: flex;
         flex-direction: row;
+        justify-content: space-between;
+        article {
+            width: 24vw;
+            text-align: center;
+            h3 {
+                color: var(--color-hover-nav);
+                font-size: 20px;
+                font-weight: 400;
+                padding-inline: 25px;
+            }
+        }
         img {
-            width: 25vw;
+            width: 24vw;
             border-radius: 20px;
-            filter: brightness(1.2) contrast(1.25) saturate(1) hue-rotate(-5deg);
+            filter: brightness(1.1) contrast(1.25) saturate(1) hue-rotate(-5deg);
         }
     }
 }
@@ -104,6 +122,8 @@ nav a#enlace-carrito:hover {
 #descripcion {
     display: flex;
     flex-direction: row;
+    align-items: center;
+    
     img {
         width: 50vw;
         margin-right: 30px;
@@ -112,6 +132,13 @@ nav a#enlace-carrito:hover {
     article {
         h2 {
             font-size: 32px;
+            color: var(--color-header);
+        }
+        p {
+            padding-right: 40px;
+            line-height: 1.5;
+            font-size: 16px;
+            text-align: justify;
         }
     }
 }
