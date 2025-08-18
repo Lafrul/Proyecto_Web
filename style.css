@@ -40,6 +40,9 @@ header {
         flex-direction: row;
         gap: 20px;
         align-items: center;
+        font-size: 17px;
+        letter-spacing: 1px;
+        font-weight: 100;
     }
     #carrito {
         filter: invert(1);
@@ -141,4 +144,14 @@ nav a#enlace-carrito:hover {
             text-align: justify;
         }
     }
+}
+
+footer {
+    margin-top: 25px;
+    padding-inline: 65px;
+    padding-bottom: 5px;
+    border-top: solid rgb(194, 194, 194);
+    font-size: 14px;
+    color: gray;
+    text-align: center;
 }
