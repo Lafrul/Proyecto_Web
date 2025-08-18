@@ -23,7 +23,7 @@ header {
     left: 0;
     width: 100%;
     box-sizing: border-box;
-    height: 67px;
+    height: 70px;
     z-index: 1000;
     a {
         color: white;
@@ -32,7 +32,7 @@ header {
             display: flex;
             flex-direction: row;
             align-items: center;
-            margin-right: 20px;
+            margin-inline: 20px;
         }
     }
     nav {
@@ -43,6 +43,7 @@ header {
         font-size: 17px;
         letter-spacing: 1px;
         font-weight: 100;
+        margin-inline: 20px;
     }
     #carrito {
         filter: invert(1);
@@ -63,6 +64,8 @@ nav a#enlace-carrito:hover {
 }
 
 #portada {
+    display: flex;
+    flex-direction: column;
     background-image: url("portada_provisional.png");
     height: 400px;
     background-size: cover;
@@ -85,6 +88,7 @@ nav a#enlace-carrito:hover {
         border-radius: 7px;
         font-size: 16px;
         margin-left: 13vw;
+        width: 108px;
     }
 }
 
@@ -104,6 +108,7 @@ nav a#enlace-carrito:hover {
         display: flex;
         flex-direction: row;
         justify-content: space-between;
+        gap: 30px;
         article {
             width: 24vw;
             text-align: center;
@@ -136,6 +141,7 @@ nav a#enlace-carrito:hover {
         h2 {
             font-size: 32px;
             color: var(--color-header);
+            margin-top: 16px;
         }
         p {
             padding-right: 40px;
@@ -147,11 +153,95 @@ nav a#enlace-carrito:hover {
 }
 
 footer {
-    margin-top: 25px;
+    margin-top: 30px;
     padding-inline: 65px;
-    padding-bottom: 5px;
+    padding-bottom: 10px;
+    padding-top: 5px;
     border-top: solid rgb(194, 194, 194);
-    font-size: 14px;
+    font-size: 12px;
     color: gray;
     text-align: center;
+}
+
+@media (max-width: 720px) {
+    header {
+        flex-wrap: wrap;
+        height: 110px;
+        justify-content: center;
+        text-align: center;
+    }
+    header > a {
+        height: 30px;
+        h2 {
+            margin-block: 7px;
+        }
+    }
+}
+
+@media (max-width: 635px) {
+    #muestra-productos {
+        padding-inline: 40px;
+        h2 {
+            text-align: center;
+        }
+        div {
+            flex-wrap: wrap;
+            justify-content: center;
+            article {
+                min-width: 220px;
+                img {
+                    min-width: 220px;
+                }
+            }
+        }
+    }
+    #descripcion {
+        flex-direction: column;
+        
+        img {
+            width: 100vw;
+            margin-right: 0px;
+            margin-bottom: 15px;
+        }
+        article {
+            h2 {
+                text-align: center;
+                padding-inline: 40px;
+            }
+            p {
+                padding-inline: 50px;
+                text-align: center;
+            }
+        }
+    }
+}
+
+@media (max-width: 440px) {
+    header {
+        padding: 0px;
+        height: 120px;
+    }
+    header > a {
+        margin-bottom: 25px;
+    }
+    nav{
+        flex-wrap: wrap;
+        justify-content: center;
+        line-height: 0;
+    }
+    #portada {
+        justify-content: center;
+        h1 {
+            font-size: 45px;
+            margin-inline: auto;
+            padding-inline: 0px;
+            text-align: center;
+        }
+        a {
+            background-color: var(--color-header);
+            border-radius: 7px;
+            font-size: 16px;
+            margin-inline: auto;
+        }
+    }
 }
