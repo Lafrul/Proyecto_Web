@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8">
         <title>Productos | De La Huerta</title>
-        <link rel="icon" href="icon.png" type="image/png">
+        <link rel="icon" href="Imagenes/icon.png" type="image/png">
         <link rel="stylesheet" type="text/css" href="style.css">
         <script src="script.js" defer></script>
     </head>
@@ -11,7 +11,7 @@
         <header>
             <a href="index.html">
                 <h2>
-                    <img src="Logo.png" alt="Logo" id="logo"> 
+                    <img src="Imagenes/Logo.png" alt="Logo" id="logo"> 
                     DE LA HUERTA
                 </h2>
             </a>
@@ -21,7 +21,7 @@
                 <a href="nosotros.html">Nosotros</a>
                 <a href="contacto.html">Contacto</a>
                 <a href="carrito.html" id="enlace-carrito">
-                    <img src="carro-de-la-compra.png" alt="Carrito" id="carrito">
+                    <img src="Imagenes/carro-de-la-compra.png" alt="Carrito" id="carrito">
                 </a>
             </nav>
         </header>
@@ -29,128 +29,132 @@
             <section>
                 <h2>Mixes</h2>
                 <article>
-                    <img src="mix.jpeg" alt="Mix">
+                    <img src="Imagenes/mix.jpeg" alt="Mix">
                     <h3>Mix (125 gr)</h3>
                     <p>Bolsa de hojas mixtas frescas que combina lechuga romana, acedera, cogollo, mizuna verde y morada, junto con 6 variedades de nuestra exclusiva Salanova.</p>
                     <h4>$8.500</h4>
-                    <input type="number" id="value" value="1" min="0">
-                    <button>Agregar</button>
+                    <input type="number" class="qty" value="1" min="1">
+                    <button class="btn-add" data-id="1">Agregar</button>
                 </article>
                 <article>
-                    <img src="" alt="MixVerde">
+                    <img src="Imagenes/mixverde.jpeg" alt="MixVerde">
                     <h3>Mix de hojas verdes (125 gr)</h3>
                     <p>Selección de hojas verdes como lechuga romana, cogollo, mizuna verde y 3 variedades de Salanova verde. Ideal para ensaladas frescas y nutritivas.</p>
                     <h4>$8.500</h4>
-                    <input type="number" id="value" value="1" min="0">
-                    <button>Agregar</button>
+                    <input type="number" class="qty" value="1" min="1">
+                    <button class="btn-add" data-id="2">Agregar</button>
                 </article>
             </section>
+
             <section>
                 <h2>Bolsas sencillas</h2>
                 <article>
-                    <img src="" alt="Romana">
+                    <img src="Imagenes/romana.jpeg" alt="Romana">
                     <h3>Bolsa de lechuga Romana (125 gr)</h3>
                     <p>Hojas crocantes y frescas de lechuga romana, perfectas para ensaladas César y otras preparaciones saludables.</p>
                     <h4>$8.500</h4>
-                    <input type="number" id="value" value="1" min="0">
-                    <button>Agregar</button>
+                    <input type="number" class="qty" value="1" min="1">
+                    <button class="btn-add" data-id="3">Agregar</button>
                 </article>
                 <article>
-                    <img src="" alt="Kale">
+                    <img src="Imagenes/kale.jpeg" alt="Kale">
                     <h3>Bolsa de Kale (100 gr)</h3>
                     <p>Col rizada de gran calidad, reconocida por su alto valor nutricional y versatilidad en ensaladas, batidos o salteados.</p>
                     <h4>$8.500</h4>
-                    <input type="number" id="value" value="1" min="0">
-                    <button>Agregar</button>
+                    <input type="number" class="qty" value="1" min="1">
+                    <button class="btn-add" data-id="4">Agregar</button>
                 </article>
                 <article>
-                    <img src="" alt="bolsaSalanova">
+                    <img src="Imagenes/bolsaSalanova.jpeg" alt="bolsaSalanova">
                     <h3>Bolsa de lechuga Salanova lisa verde</h3>
                     <p>Hojas tiernas y uniformes de Salanova lisa verde, suaves al paladar y fáciles de preparar en cualquier plato.</p>
                     <h4>$8.500</h4>
-                    <input type="number" id="value" value="1" min="0">
-                    <button>Agregar</button>
+                    <input type="number" class="qty" value="1" min="1">
+                    <button class="btn-add" data-id="5">Agregar</button>
                 </article>
             </section>
+
             <section>
                 <h2>Lechugas enteras</h2>
                 <article>
-                    <img src="SalanovaCompleta.jpeg" alt="SalanovaLisaVerde">
+                    <img src="Imagenes/SalanovaCompleta.jpeg" alt="SalanovaLisaVerde">
                     <h3>Lechuga Salanova lisa verde</h3>
                     <p>Lechuga entera de la variedad Salanova lisa verde, de textura suave y sabor delicado.</p>
                     <h4>$6.000</h4>
-                    <input type="number" id="value" value="1" min="0">
-                    <button>Agregar</button>
+                    <input type="number" class="qty" value="1" min="1">
+                    <button class="btn-add" data-id="6">Agregar</button>
                 </article>
                 <article>
-                    <img src="" alt="SalanovaLisaMorada">
+                    <img src="Imagenes/salanovaLisaMorada.jpeg" alt="SalanovaLisaMorada">
                     <h3>Lechuga Salanova lisa morada</h3>
                     <p>Lechuga entera de Salanova lisa morada, con un atractivo color púrpura y gran frescura.</p>
                     <h4>$6.000</h4>
-                    <input type="number" id="value" value="1" min="0">
-                    <button>Agregar</button>
+                    <input type="number" class="qty" value="1" min="1">
+                    <button class="btn-add" data-id="7">Agregar</button>
                 </article>
                 <article>
-                    <img src="" alt="SalanovaCrespaVerde">
+                    <img src="Imagenes/salanovaCrespaVerde.jpeg" alt="SalanovaCrespaVerde">
                     <h3>Lechuga Salanova crespa verde</h3>
                     <p>Lechuga entera de hojas crespas y color verde intenso, ideal para ensaladas voluminosas y nutritivas.</p>
                     <h4>$6.000</h4>
-                    <input type="number" id="value" value="1" min="0">
-                    <button>Agregar</button>
+                    <input type="number" class="qty" value="1" min="1">
+                    <button class="btn-add" data-id="8">Agregar</button>
                 </article>
                 <article>
-                    <img src="" alt="SalanovaCrespaMorada">
+                    <img src="Imagenes/salanovaCrespaMorada.jpeg" alt="SalanovaCrespaMorada">
                     <h3>Lechuga Salanova crespa morada</h3>
                     <p>Variedad crespa de tono morado brillante, con hojas frescas y textura crujiente.</p>
                     <h4>$6.000</h4>
-                    <input type="number" id="value" value="1" min="0">
-                    <button>Agregar</button>
+                    <input type="number" class="qty" value="1" min="1">
+                    <button class="btn-add" data-id="9">Agregar</button>
                 </article>
                 <article>
-                    <img src="" alt="SalanovaRobleVerde">
+                    <img src="Imagenes/salanovaRobleVerde.jpeg" alt="SalanovaRobleVerde">
                     <h3>Lechuga Salanova roble verde</h3>
                     <p>Lechuga tipo roble de color verde, con hojas suaves y gran sabor.</p>
                     <h4>$6.000</h4>
-                    <input type="number" id="value" value="1" min="0">
-                    <button>Agregar</button>
+                    <input type="number" class="qty" value="1" min="1">
+                    <button class="btn-add" data-id="10">Agregar</button>
                 </article>
                 <article>
-                    <img src="" alt="SalanovaRobleMorada">
+                    <img src="Imagenes/salanovaRobleMorada.jpeg" alt="SalanovaRobleMorada">
                     <h3>Lechuga Salanova roble morada</h3>
                     <p>Lechuga entera con hojas tipo roble de color morado oscuro, excelente para dar contraste en tus ensaladas.</p>
                     <h4>$6.000</h4>
-                    <input type="number" id="value" value="1" min="0">
-                    <button>Agregar</button>
+                    <input type="number" class="qty" value="1" min="1">
+                    <button class="btn-add" data-id="11">Agregar</button>
                 </article>
             </section>
+
             <section>
                 <h2>Otros productos</h2>
                 <article>
-                    <img src="Chimi.jpeg" alt="Chimichurri">
+                    <img src="Imagenes/Chimi.jpeg" alt="Chimichurri">
                     <h3>Chimichurri (180 gr)</h3>
                     <p>Tradicional salsa argentina elaborada con perejil, ajo, aceite, pimentón y especias. Perfecta para carnes y asados.</p>
                     <h4>$18.000</h4>
-                    <input type="number" id="value" value="1" min="0">
-                    <button>Agregar</button>
+                    <input type="number" class="qty" value="1" min="1">
+                    <button class="btn-add" data-id="12">Agregar</button>
                 </article>
                 <article>
-                    <img src="" alt="Chocoteja">
+                    <img src="Imagenes/chocoteja.jpeg" alt="Chocoteja">
                     <h3>Chocoteja</h3>
                     <p>Dulce peruano hecho a base de chocolate relleno con frutos secos y manjar blanco, una combinación deliciosa.</p>
                     <h4>$4.000</h4>
-                    <input type="number" id="value" value="1" min="0">
-                    <button>Agregar</button>
+                    <input type="number" class="qty" value="1" min="1">
+                    <button class="btn-add" data-id="13">Agregar</button>
                 </article>
                 <article>
-                    <img src="" alt="Mermelada">
+                    <img src="Imagenes/mermelada.jpeg" alt="Mermelada">
                     <h3>Mermelada (250 gr)</h3>
                     <p>Mermelada artesanal de frutas seleccionadas como fresa, lulo y naranja, elaborada con ingredientes naturales.</p>
                     <h4>$18.000</h4>
-                    <input type="number" id="value" value="1" min="0">
-                    <button>Agregar</button>
+                    <input type="number" class="qty" value="1" min="1">
+                    <button class="btn-add" data-id="14">Agregar</button>
                 </article>
             </section>
         </main>
+
     </body>
     <footer>
         <p>© Derechos Reservados 2025. Desarrollado por Laura María Franco Ulloa y Juan Sebastián Ulloa Mejía</p>

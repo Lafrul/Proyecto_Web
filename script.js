@@ -97,7 +97,7 @@ const productos = [
 /* ------------------------------------------------------------------------------ */
 
 const carrito = {};
-const IMG_BASE = 'productos/';
+const IMG_BASE = 'Imagenes/';
 
 const fmt = n => Number(n).toFixed(2);
 
@@ -134,35 +134,38 @@ function emptyCart() { setCart({}); }
 
 /* Productos */
 
-const itemsContainer = document.querySelector('main');
+function initProductosPage() {
+  // Usa el contenedor donde están los <article> con los botones .btn-add
+  const itemsContainer = document.querySelector('main');
+  if (!itemsContainer) return; // ← Importante para que no rompa en carrito.html
 
-itemsContainer.addEventListener('click', (e) => {
-  if (!e.target.classList.contains('btn-add')) return;
+  itemsContainer.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-add');
+    if (!btn) return;
 
-  const id = Number(e.target.dataset.id);
-  const card = e.target.closest('article');
+    const id = Number(btn.dataset.id);
+    const card = btn.closest('article');
+    const qtyInput = card?.querySelector('.qty');
 
-  const qtyInput = card.querySelector('.qty');
-  let cantidad = 1;
+    let cantidad = 1;
+    if (qtyInput) {
+      cantidad = parseInt(qtyInput.value, 10);
+      if (!Number.isFinite(cantidad) || cantidad < 1) cantidad = 1;
+    }
 
-  if (qtyInput) {
-    cantidad = parseInt(qtyInput.value, 10);
-    if (!Number.isFinite(cantidad) || cantidad < 1) cantidad = 1;
-  }
+    addToCart(id, cantidad);
+    if (qtyInput) qtyInput.value = '1';
+  });
+}
 
-  addToCart(id, cantidad);
-
-  if (qtyInput) qtyInput.value = '1';
-});
-
-
-
-/* Carrito */
+/* ===================== Página del Carrito ===================== */
 function initCarritoPage() {
   const $lista  = document.getElementById('carrito-lista');
   const $total  = document.getElementById('total');
   const $vaciar = document.getElementById('vaciar');
   const $pagar  = document.getElementById('pagar');
+
+  // Si no estamos en carrito.html, salimos sin romper nada
   if (!$lista || !$total) return;
 
   function renderCarrito() {
@@ -186,7 +189,6 @@ function initCarritoPage() {
       const li = document.createElement('li');
       li.className = 'carrito-item';
       li.innerHTML = `
-        <!-- FOTO ENCIMA -->
         <div class="thumb">
           <img src="${IMG_BASE}${p.imagen}" alt="${p.nombre}">
         </div>
@@ -200,7 +202,7 @@ function initCarritoPage() {
           <button class="btn-qty" data-action="menos" data-id="${p.id}">-</button>
           <span class="cant">${cant}</span>
           <button class="btn-qty" data-action="mas" data-id="${p.id}">+</button>
-          <button class="btn-remove" data-action="del" data-id="${p.id}">x</button>
+          <button class="btn-remove" data-action="del" data-id="${p.id}"><img src="Imagenes/basura.png" alt="Quitar"></button>
         </div>
 
         <div class="subtotal">$ ${fmt(subtotal)}</div>
@@ -212,8 +214,11 @@ function initCarritoPage() {
   }
 
   $lista.addEventListener('click', (e) => {
-    const action = e.target.dataset.action;
-    const id = Number(e.target.dataset.id);
+    const btnQty = e.target.closest('.btn-qty, .btn-remove');
+    if (!btnQty) return;
+
+    const action = btnQty.dataset.action;
+    const id = Number(btnQty.dataset.id);
     if (!action || Number.isNaN(id)) return;
 
     if (action === 'mas')   addToCart(id, 1);
@@ -231,7 +236,7 @@ function initCarritoPage() {
   $pagar?.addEventListener('click', () => {
     const cart = getCart();
     const entries = Object.entries(cart);
-    if (entries.length === 0) return; 
+    if (entries.length === 0) return;
 
     const itemsStr = entries.map(([idStr, cant]) => {
       const p = productos.find(pp => pp.id === Number(idStr));
@@ -257,6 +262,7 @@ function initCarritoPage() {
   renderCarrito();
 }
 
+/* ===================== Bootstrap ===================== */
 document.addEventListener('DOMContentLoaded', () => {
   initProductosPage();
   initCarritoPage();
