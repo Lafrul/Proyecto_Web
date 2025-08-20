@@ -217,6 +217,27 @@ footer {
     background-color: var(--color-hover-btn);
 }
 
+#main-productos {
+    display: flex;
+    flex-direction: column;
+    section {
+        div{
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            article {
+                display: flex;
+                flex-direction: row;
+            }
+        }
+    }
+    img {
+        width: 150px;
+        height: 150px;
+        border-radius: 7px 0 0 7px;
+    }
+}
+
 @media (max-width: 745px) {
     header {
         flex-wrap: wrap;
