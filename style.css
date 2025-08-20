@@ -168,6 +168,8 @@ footer {
     color: var(--color-hover-nav);
     margin-inline: 65px;
     margin-top: 40px;
+    margin-bottom: 140px;
+
     h2 {
         font-size: 32px;
         color: var(--color-header);
