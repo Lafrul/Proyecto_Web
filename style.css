@@ -194,6 +194,7 @@ footer {
     border: none;
     border-bottom: 1px solid var(--color-header);
     color: var(--azul-principal);
+    font-size: 14px;
 }
 
 .inputs-texto::placeholder{
