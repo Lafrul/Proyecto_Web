@@ -12,7 +12,7 @@ const productos = [
       id: 2,
       nombre: 'Mix de hojas verdes (125 gr)',
       precio: 8500,
-      imagen: 'mixverde.jpeg'
+      imagen: 'mixverde.jpg'
     },
 
     // Bolsas sencillas
@@ -229,6 +229,7 @@ function initCarritoPage() {
   });
 
   $vaciar?.addEventListener('click', () => {
+    alert("Carrito vacio");
     emptyCart();
     renderCarrito();
   });
@@ -255,6 +256,7 @@ function initCarritoPage() {
     const nuevaURL = `${location.origin}${location.pathname}?${params.toString()}`;
     history.replaceState(null, '', nuevaURL);
 
+    alert("Productos comprados");
     emptyCart();
     renderCarrito();
   });
