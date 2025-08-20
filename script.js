@@ -1,36 +1,107 @@
-const productos = [
-    {
-        id: 1,
-        nombre: 'lechuga',
-        precio: 1,
-        imagen: 'lechuga.jpg'
-    },
-    {
-        id: 2,
-        nombre: 'otra_lechuga',
-        precio: 1.2,
-        imagen: 'otra_lechuga.jpeg'
-    },
-    {
-        id: 3,
-        nombre: 'lechuga3',
-        precio: 2.1,
-        imagen: 'lechuga3.png'
-    },
-    {
-        id: 4,
-        nombre: 'ultima_lechuga',
-        precio: 0.6,
-        imagen: 'ultima_lechuga.jpeg'
-    }
+/* lista de productos */
 
+const productos = [
+    // Mixes
+    {
+      id: 1,
+      nombre: 'Mix (125 gr)',
+      precio: 8500,
+      imagen: 'mix.jpeg'
+    },
+    {
+      id: 2,
+      nombre: 'Mix de hojas verdes (125 gr)',
+      precio: 8500,
+      imagen: 'mixverde.jpeg'
+    },
+
+    // Bolsas sencillas
+    {
+      id: 3,
+      nombre: 'Bolsa de lechuga Romana (125 gr)',
+      precio: 8500,
+      imagen: 'romana.jpeg'
+    },
+    {
+      id: 4,
+      nombre: 'Bolsa de Kale (100 gr)',
+      precio: 8500,
+      imagen: 'kale.jpeg'
+    },
+    {
+      id: 5,
+      nombre: 'Bolsa de lechuga Salanova lisa verde',
+      precio: 8500,
+      imagen: 'bolsaSalanova.jpeg'
+    },
+
+    // Lechugas enteras
+    {
+      id: 6,
+      nombre: 'Lechuga Salanova lisa verde',
+      precio: 6000,
+      imagen: 'SalanovaCompleta.jpeg'
+    },
+    {
+      id: 7,
+      nombre: 'Lechuga Salanova lisa morada',
+      precio: 6000,
+      imagen: 'salanovaLisaMorada.jpeg'
+    },
+    {
+      id: 8,
+      nombre: 'Lechuga Salanova crespa verde',
+      precio: 6000,
+      imagen: 'salanovaCrespaVerde.jpeg'
+    },
+    {
+      id: 9,
+      nombre: 'Lechuga Salanova crespa morada',
+      precio: 6000,
+      imagen: 'salanovaCrespaMorada.jpeg'
+    },
+    {
+      id: 10,
+      nombre: 'Lechuga Salanova roble verde',
+      precio: 6000,
+      imagen: 'salanovaRobleVerde.jpeg'
+    },
+    {
+      id: 11,
+      nombre: 'Lechuga Salanova roble morada',
+      precio: 6000,
+      imagen: 'salanovaRobleMorada.jpeg'
+    },
+
+    // Otros productos
+    {
+      id: 12,
+      nombre: 'Chimichurri (180 gr)',
+      precio: 18000,
+      imagen: 'Chimi.jpeg'
+    },
+    {
+      id: 13,
+      nombre: 'Chocoteja',
+      precio: 4000,
+      imagen: 'chocoteja.jpeg'
+    },
+    {
+      id: 14,
+      nombre: 'Mermelada (250 gr)',
+      precio: 18000,
+      imagen: 'mermelada.jpeg'
+    }
 ];
+
+/* ------------------------------------------------------------------------------ */
 
 const carrito = {};
 const IMG_BASE = 'productos/';
 
 const fmt = n => Number(n).toFixed(2);
 
+/* Persistencia del carrito */
 const KEY = 'carrito_de_la_huerta';
 function getCart() {
   try { return JSON.parse(localStorage.getItem(KEY)) || {}; }
@@ -38,6 +109,7 @@ function getCart() {
 }
 function setCart(cart) { localStorage.setItem(KEY, JSON.stringify(cart)); }
 
+/* ------------------------------------------------------------------------------ */
 
 /* Operaciones */
 function addToCart(id, cantidad = 1) {
@@ -59,46 +131,31 @@ function removeAll(id) {
 }
 function emptyCart() { setCart({}); }
 
+
 /* Productos */
-function initProductosPage() {
-  const $items = document.getElementById('items');
-  if (!$items) return; 
 
-  $items.innerHTML = '';
-  productos.forEach(p => {
-    const card = document.createElement('article');
-    card.className = 'item-card';
-    card.innerHTML = `
-      <img src="${IMG_BASE}${p.imagen}" alt="${p.nombre}">
-      <div class="item-body">
-        <h3 class="item-title">${p.nombre.replaceAll('_',' ')}</h3>
-        <p class="item-price">$ ${fmt(p.precio)}</p>
+const itemsContainer = document.querySelector('main');
 
-        <div class="add-row">
-          <input type="number" class="qty" min="1" step="1" value="1"
-                 aria-label="Cantidad para ${p.nombre}">
-          <button class="btn btn-primary btn-add" data-id="${p.id}">
-            AÑADIR AL CARRITO
-          </button>
-        </div>
-      </div>
-    `;
-    $items.appendChild(card);
-  });
+itemsContainer.addEventListener('click', (e) => {
+  if (!e.target.classList.contains('btn-add')) return;
 
-  $items.addEventListener('click', (e) => {
-    if (!e.target.classList.contains('btn-add')) return;
-    const id = Number(e.target.dataset.id);
-    const card = e.target.closest('.item-card');
-    const qtyInput = card.querySelector('.qty');
+  const id = Number(e.target.dataset.id);
+  const card = e.target.closest('article');
 
-    let cantidad = parseInt(qtyInput.value, 10);
+  const qtyInput = card.querySelector('.qty');
+  let cantidad = 1;
+
+  if (qtyInput) {
+    cantidad = parseInt(qtyInput.value, 10);
     if (!Number.isFinite(cantidad) || cantidad < 1) cantidad = 1;
+  }
 
-    addToCart(id, cantidad);
-    qtyInput.value = '1';
-  });
-}
+  addToCart(id, cantidad);
+
+  if (qtyInput) qtyInput.value = '1';
+});
+
+
 
 /* Carrito */
 function initCarritoPage() {
