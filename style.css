@@ -67,7 +67,7 @@ nav a#enlace-carrito:hover {
 #portada {
     display: flex;
     flex-direction: column;
-    background-image: url("portada_provisional.png");
+    background-image: url("Imagenes/portada_provisional.png");
     height: 400px;
     background-size: cover;
     h1 {
