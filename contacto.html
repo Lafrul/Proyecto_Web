@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <title>Inicio | De La Huerta</title>
+        <link rel="icon" href="icon.png" type="image/png">
+        <link rel="stylesheet" type="text/css" href="style.css">
+        <script src="script.js" defer></script>
+    </head>
+    <body>
+        <header>
+            <a href="index.html">
+                <h2>
+                    <img src="Logo.png" alt="Logo" id="logo"> 
+                    DE LA HUERTA
+                </h2>
+            </a>
+            <nav>
+                <a href="index.html">Inicio</a>
+                <a href="productos.html">Productos</a>
+                <a href="nosotros.html">Nosotros</a>
+                <a href="contacto.html">Contacto</a>
+                <a href="carrito.html" id="enlace-carrito">
+                    <img src="carro-de-la-compra.png" alt="Carrito" id="carrito">
+                </a>
+            </nav>
+        </header>
+        <main id="main-form">
+            <h2>Contáctanos</h2>
+            <p>Si tienes alguna duda o quieres más información acerca de cualquiera de nuestros productos no dudes en escribirnos un mensaje y nos pondremos en contacto contigo lo antes posible.</p>
+            <form action="index.html">
+                <div>
+                    <label for="name">Full name:</label><br>
+                    <input type="text" id="name" name="name" placeholder="Write your name" required class="inputs-texto">
+                </div>
+                <div>
+                    <label for="telephone">Telephone:</label><br>
+                    <input type="tel" id="telephone" name="telephone" placeholder="Write telephone" required class="inputs-texto">
+                </div>
+                <div>
+                    <label for="email">Email:</label><br>
+                    <input type="email" id="email" name="email" placeholder="Write your email" required class="inputs-texto">
+                </div>
+                <div>
+                    <label for="subject">Subject:</label><br>
+                    <input type="text" id="subject" name="subject" placeholder="Write the subject" required class="inputs-texto">
+                </div>
+                <div>
+                    <label for="message">Message:</label><br>
+                    <input type="text" id="message" name="message" placeholder="Write the message" required class="inputs-texto">
+                </div>
+                <div>
+                    <input type="submit" id="btn-submit">
+                </div>
+            </form>
+        </main>
+    </body>
+    <footer>
+        <p>© Derechos Reservados 2025. Desarrollado por Laura María Franco Ulloa y Juan Sebastián Ulloa Mejía</p>
+    </footer>
+</html>

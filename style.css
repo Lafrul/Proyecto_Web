@@ -2,6 +2,7 @@
     --color-header: #1a5218;
     --color-hover-nav: #0d290c;
     --color-hover-btn: #246e22;
+    --color-placeholder: #758974;
 }
 
 body {
@@ -163,6 +164,56 @@ footer {
     text-align: center;
 }
 
+#main-form{
+    color: var(--color-hover-nav);
+    margin-inline: 65px;
+    margin-top: 40px;
+    h2 {
+        font-size: 32px;
+        color: var(--color-header);
+        margin-top: 16px;
+    }
+    div {
+        margin-block: 15px;
+        font-size: 16px;
+    }
+    p{
+        margin-bottom: 35px;
+        margin-top: 20px;
+        font-size: 14px;
+        text-align: justify;
+    }
+}
+
+.inputs-texto{
+    margin-top: 5px;
+    margin-bottom: 10px;
+    height: 30px;
+    width: 300px;
+    outline: none;
+    border: none;
+    border-bottom: 1px solid var(--color-header);
+    color: var(--azul-principal);
+}
+
+.inputs-texto::placeholder{
+    color: var(--color-placeholder);
+}
+
+#btn-submit{
+    height: 30px;
+    width: 110px;
+    border-radius: 7px;
+    margin-top: 5px;
+    background-color: var(--color-header);
+    border: none;
+    color: white;
+}
+
+#btn-submit:hover {
+    background-color: var(--color-hover-btn);
+}
+
 @media (max-width: 745px) {
     header {
         flex-wrap: wrap;
@@ -243,5 +294,8 @@ footer {
             font-size: 16px;
             margin-inline: auto;
         }
+    }
+    .inputs-texto{
+        width: 67vw;
     }
 }
