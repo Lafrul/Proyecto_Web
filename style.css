@@ -363,6 +363,52 @@ footer {
     }
 }
 
+/*  Nosotros */
+
+main {
+  display: flex;
+  flex-wrap: wrap;              /* Se adapta en móviles */
+  justify-content: center;
+  gap: 2rem;
+  padding: 2rem;
+}
+
+main div {
+  background: #fff;
+  border: 1px solid var(--color-placeholder);  /* Borde gris de tu paleta */
+  border-radius: 1rem;
+  padding: 1.5rem;
+  text-align: center;
+  max-width: 250px;
+  flex: 1 1 200px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+  transition: transform 0.3s;
+}
+
+main div:hover {
+  transform: translateY(-5px);
+}
+
+main img {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 50%; 
+  margin-bottom: 1rem;
+  border: 3px solid var(--color-header);   /* Verde principal */
+}
+
+main h2 {
+  font-size: 1.2rem;
+  margin: 0.5rem 0;
+  color: var(--color-header);   /* Verde principal */
+}
+
+main p {
+  font-size: 0.9rem;
+  color: var(--color-placeholder);  /* Gris suave */
+}
+
 /* ------------------------------------------------------------------------------------------- */
 /* carrito */
 #carrito-lista{
