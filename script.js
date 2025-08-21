@@ -12,7 +12,7 @@ const productos = [
       id: 2,
       nombre: 'Mix de hojas verdes (125 gr)',
       precio: 8500,
-      imagen: 'mixverde.jpg'
+      imagen: 'mixverde.png'
     },
 
     // Bolsas sencillas
@@ -20,19 +20,19 @@ const productos = [
       id: 3,
       nombre: 'Bolsa de lechuga Romana (125 gr)',
       precio: 8500,
-      imagen: 'romana.jpeg'
+      imagen: 'romana.png'
     },
     {
       id: 4,
       nombre: 'Bolsa de Kale (100 gr)',
       precio: 8500,
-      imagen: 'kale.jpeg'
+      imagen: 'kale.png'
     },
     {
       id: 5,
       nombre: 'Bolsa de lechuga Salanova lisa verde',
       precio: 8500,
-      imagen: 'bolsaSalanova.jpeg'
+      imagen: 'bolsaSalanova.png'
     },
 
     // Lechugas enteras
@@ -46,31 +46,31 @@ const productos = [
       id: 7,
       nombre: 'Lechuga Salanova lisa morada',
       precio: 6000,
-      imagen: 'salanovaLisaMorada.jpeg'
+      imagen: 'salanovaLisaMorada.png'
     },
     {
       id: 8,
       nombre: 'Lechuga Salanova crespa verde',
       precio: 6000,
-      imagen: 'salanovaCrespaVerde.jpeg'
+      imagen: 'salanovaCrespaVerde.png'
     },
     {
       id: 9,
       nombre: 'Lechuga Salanova crespa morada',
       precio: 6000,
-      imagen: 'salanovaCrespaMorada.jpeg'
+      imagen: 'salanovaCrespaMorada.png'
     },
     {
       id: 10,
       nombre: 'Lechuga Salanova roble verde',
       precio: 6000,
-      imagen: 'salanovaRobleVerde.jpeg'
+      imagen: 'salanovaRobleVerde.png'
     },
     {
       id: 11,
       nombre: 'Lechuga Salanova roble morada',
       precio: 6000,
-      imagen: 'salanovaRobleMorada.jpeg'
+      imagen: 'salanovaRobleMorada.png'
     },
 
     // Otros productos
@@ -84,7 +84,7 @@ const productos = [
       id: 13,
       nombre: 'Chocoteja',
       precio: 4000,
-      imagen: 'chocoteja.jpeg'
+      imagen: 'chocoteja.png'
     },
     {
       id: 14,
