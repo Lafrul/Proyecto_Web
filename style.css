@@ -364,18 +364,17 @@ footer {
 }
 
 /*  Nosotros */
-
-main {
+.devs {
   display: flex;
-  flex-wrap: wrap;              /* Se adapta en móviles */
+  flex-wrap: wrap;
   justify-content: center;
   gap: 2rem;
   padding: 2rem;
 }
 
-main div {
+.devs div {
   background: #fff;
-  border: 1px solid var(--color-placeholder);  /* Borde gris de tu paleta */
+  border: 1px solid var(--color-placeholder);
   border-radius: 1rem;
   padding: 1.5rem;
   text-align: center;
@@ -385,29 +384,30 @@ main div {
   transition: transform 0.3s;
 }
 
-main div:hover {
+.devs div:hover {
   transform: translateY(-5px);
 }
 
-main img {
+.devs img {
   width: 120px;
   height: 120px;
   object-fit: cover;
-  border-radius: 50%; 
+  border-radius: 50%;
   margin-bottom: 1rem;
-  border: 3px solid var(--color-header);   /* Verde principal */
+  border: 3px solid var(--color-header);
 }
 
-main h2 {
+.devs h2 {
   font-size: 1.2rem;
   margin: 0.5rem 0;
-  color: var(--color-header);   /* Verde principal */
+  color: var(--color-header);
 }
 
-main p {
+.devs p {
   font-size: 0.9rem;
-  color: var(--color-placeholder);  /* Gris suave */
+  color: var(--color-placeholder);
 }
+
 
 /* ------------------------------------------------------------------------------------------- */
 /* carrito */
