@@ -246,6 +246,9 @@ footer {
         height: 150px;
         border-radius: 7px 0 0 7px;
     }
+    #mix {
+        filter: brightness(1.1) contrast(1.25) saturate(1) hue-rotate(-5deg);
+    }
     section {
         margin-bottom: 10px;
     }
@@ -319,13 +322,56 @@ footer {
     }
 }
 
-@media (max-width:545px){
+@media (max-width: 500px) {
     #main-productos {
-        article {
-            flex-wrap: wrap;
+        margin-inline: 7vw;
+        section > div {
+            gap: 20px;
+            article {
+                flex-direction: column;
+                height: 430px;
+                width: 160px;
+                img {
+                    border-radius: 8px 8px 0 0;
+                    width: 100%;
+                    height: auto;
+                    object-fit: cover;
+                }
+            }
+            article > div {
+                width: 130px; 
+                height: 430px; 
+                padding-inline: 15px;
+                position: static;
+                h3, p {
+                    width: 130px;
+                }
+            }
+            article > div > div {
+                position: static;
+                margin-top: auto;
+                flex-wrap: wrap;
+                justify-content: center;
+                width: 100%;
+                h4 {
+                    margin-inline: 20px;
+                    margin-bottom: 10px;
+                }
+                input, button{
+                    margin-bottom: 10px;
+                }
+            }
         }
-        article > div {
-            width: 40vw;
+    }
+}
+
+@media (max-width: 402px) {
+    #main-productos{
+        h2 {
+            text-align: center;
+        }
+        section > div {
+            justify-content: center;
         }
     }
 }
@@ -419,16 +465,37 @@ footer {
     }
 }
 
+/* ------------------------------------------------------------------------------------------- */
 /*  Nosotros */
+
 .devs {
   display: flex;
+  flex-direction: column;
   flex-wrap: wrap;
-  justify-content: center;
-  gap: 2rem;
-  padding: 2rem;
+  align-items: center;
 }
 
-.devs div {
+.devs > h2 {
+    margin-top: 40px;
+    font-size: 32px;
+    color: var(--color-header);
+    margin-inline: 50px;
+    text-align: center;
+}
+
+.devs > div{
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2rem;
+    padding-inline: 2rem;
+    padding-bottom: 2rem;
+    padding-top: 10px;
+    margin-bottom: 260px;
+}
+
+.devs > div > div{
   background: #fff;
   border: 1px solid var(--color-placeholder);
   border-radius: 1rem;
@@ -440,7 +507,7 @@ footer {
   transition: transform 0.3s;
 }
 
-.devs div:hover {
+.devs > div > div:hover {
   transform: translateY(-5px);
 }
 
@@ -453,7 +520,7 @@ footer {
   border: 3px solid var(--color-header);
 }
 
-.devs h2 {
+.devs > div h2 {
   font-size: 1.2rem;
   margin: 0.5rem 0;
   color: var(--color-header);
