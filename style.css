@@ -163,14 +163,13 @@ footer {
     font-size: 12px;
     color: gray;
     text-align: center;
+    background-color: white;
 }
 
 #main-form{
     color: var(--color-hover-nav);
     margin-inline: 65px;
     margin-top: 40px;
-    margin-bottom: 140px;
-
     h2 {
         font-size: 32px;
         color: var(--color-header);
@@ -234,48 +233,46 @@ footer {
         height: 150px;
         border-radius: 7px 0 0 7px;
     }
-}
-
-section > div {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 20px;
-    article {
+    section > div {
         display: flex;
         flex-direction: row;
-        background-color: whitesmoke;
-        border: solid 1px var(--fondo-productos);
-        border-radius: 8px;
-        height: 150px;
-        position: relative;
-    }
-    article > div {
-        display: flex;
-        flex-direction: column;
-        width: 250px;
-        padding-inline: 15px;
-        h3 {
-            font-weight: 550;
-            color: var(--color-hover-nav);
-            margin-bottom: 8px;
-            margin-top: 15px;
-            font-size: 18px;
+        flex-wrap: wrap;
+        gap: 20px;
+        article {
+            display: flex;
+            flex-direction: row;
+            border: solid 1.5px color-mix(in oklab, #fff 85%, var(--color-header));
+            border-radius: 8px;
+            height: 150px;
+            position: relative;
         }
-        p {
-            margin-top: 0;
-            margin-bottom: 10px;
-            text-align: justify;
-            font-size: 13px;
+        article > div {
+            display: flex;
+            flex-direction: column;
+            width: 250px;
+            padding-inline: 15px;
+            h3 {
+                font-weight: 550;
+                color: var(--color-hover-nav);
+                margin-bottom: 8px;
+                margin-top: 15px;
+                font-size: 18px;
+            }
+            p {
+                margin-top: 0;
+                margin-bottom: 10px;
+                text-align: justify;
+                font-size: 13px;
+            }
         }
-    }
-    article > div > div {
-        display: flex;
-        flex-direction: row;
-        position: absolute;
-        bottom: 10px;
-        h4 {
-            margin-block: 0px;
+        article > div > div {
+            display: flex;
+            flex-direction: row;
+            position: absolute;
+            bottom: 10px;
+            h4 {
+                margin-block: 0px;
+            }
         }
     }
 }
@@ -549,6 +546,20 @@ section > div {
   border-color: var(--color-hover-btn);
 }
 #vaciar:active, #pagar:active{ transform: translateY(1px) scale(0.98); }
+
+#carrito-panel{
+    margin-top: 40px;
+    margin-bottom: 97px;
+    margin-inline: 40px;
+    h2 {
+        color: var(--color-header);
+        font-size: 34px;
+    }
+}
+
+#vaciar {
+    margin-top: 7px;
+}
 
 @media (max-width: 420px){
   .carrito-item{ grid-template-columns: 72px 1fr auto; }
