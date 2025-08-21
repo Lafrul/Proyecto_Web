@@ -90,7 +90,7 @@ const productos = [
       id: 14,
       nombre: 'Mermelada (250 gr)',
       precio: 18000,
-      imagen: 'mermelada.jpeg'
+      imagen: 'mermelada.png'
     }
 ];
 
