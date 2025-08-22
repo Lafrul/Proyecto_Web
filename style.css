@@ -331,6 +331,7 @@ footer {
                 flex-direction: column;
                 height: 430px;
                 width: 160px;
+                position: relative;i
                 img {
                     border-radius: 8px 8px 0 0;
                     width: 100%;
@@ -353,8 +354,11 @@ footer {
                 flex-wrap: wrap;
                 justify-content: center;
                 width: 100%;
+                position: absolute;
+                bottom: 10px;
+                right: 0%;
                 h4 {
-                    margin-inline: 20px;
+                    margin-inline: 40px;
                     margin-bottom: 10px;
                 }
                 input, button{
