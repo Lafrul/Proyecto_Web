@@ -331,7 +331,7 @@ footer {
                 flex-direction: column;
                 height: 430px;
                 width: 160px;
-                position: relative;i
+                position: relative;
                 img {
                     border-radius: 8px 8px 0 0;
                     width: 100%;
@@ -370,12 +370,28 @@ footer {
 }
 
 @media (max-width: 402px) {
-    #main-productos{
+    #main-productos {
+        section > div {
+            justify-content: center;
+            article {
+                width: 240px !important;
+                height: 450px !important;
+            }
+            article > div {
+                width: 210px !important; 
+                height: 450px !important;
+                h3, p {
+                    width: 210px;
+                }
+            }
+        }
         h2 {
             text-align: center;
         }
-        section > div {
-            justify-content: center;
+        article > div > div {
+            h4 {
+                margin-inline: 80px !important;
+            }
         }
     }
 }
