@@ -1,4 +1,4 @@
-# 🌱 La Huerta
+# 🌱 De La Huerta
 
 ## 👩‍💻 Desarrolladores
 
