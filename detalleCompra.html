@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+    <head>
+        <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Compra | De La Huerta</title>
+        <link rel="icon" href="Imagenes/icon.png" type="image/png">
+        <link rel="stylesheet" type="text/css" href="style.css">
+        <script src="script.js" defer></script>
+    </head>
+    <body>
+        <header>
+            <a href="index.html">
+                <h2>
+                    <img src="Imagenes/Logo.png" alt="Logo" id="logo"> 
+                    DE LA HUERTA
+                </h2>
+            </a>
+            <nav>
+                <a href="index.html">Inicio</a>
+                <a href="productos.html">Productos</a>
+                <a href="nosotros.html">Nosotros</a>
+                <a href="contacto.html">Contacto</a>
+                <a href="carrito.html" id="enlace-carrito">
+                    <img src="Imagenes/carro-de-la-compra.png" alt="Carrito" id="carrito">
+                </a>
+            </nav>
+        </header>
+        <main id="main-detalle">
+            <h2>Detalles de la compra</h2>
+            <p>Ingresa toda tu información y paga cuando recibas tu pedido con cualquier método de pago.</p>
+            <form action="index.html">
+                <div>
+                    <label for="name">Nombre completo:</label><br>
+                    <input type="text" id="name" name="name" placeholder="Ingresa tu nombre" required class="inputs-texto">
+                </div>
+                <div>
+                    <label for="documentType">Tipo de documento:</label><br>
+                    <select id="documentType" name="documentType" required class="inputs-texto">
+                        <option value="" disabled selected>Seleccione una opción</option>
+                        <option value="cc">Cédula de ciudadanía</option>
+                        <option value="ti">Tarjeta de identidad</option>
+                        <option value="ce">Cédula de extranjería</option>
+                        <option value="pp">Pasaporte</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="number">Número de documento:</label><br>
+                    <input type="number" id="documentNum" name="DocNum" placeholder="Ingresa tu documento" required class="inputs-texto">
+                </div>
+                <div>
+                    <label for="telephone">Teléfono:</label><br>
+                    <input type="text" id="subject" name="subject" placeholder="Ingresa tu teléfono" required class="inputs-texto">
+                </div>
+                <div>
+                    <label for="email">Correo:</label><br>
+                    <input type="email" id="email" name="email" placeholder="Ingresa tu correo" required class="inputs-texto">
+                </div>
+                <div>
+                    <label for="ciudad">Ciudad:</label><br>
+                    <select id="ciudad" name="ciudad" required class="inputs-texto">
+                        <option value="" disabled selected hidden>Seleccione una ciudad</option>
+                        <option value="bogota">Bogotá</option>
+                        <option value="chia">Chía</option>
+                        <option value="cajica">Cajicá</option>
+                        <option value="cota">Cota</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="direccion">Dirección:</label><br>
+                    <input type="text" id="direccion" name="direccion" placeholder="Ingresa tu dirección" required class="inputs-texto">
+                </div>
+                <div>
+                    <label for="direccion">Otros datos:</label><br>
+                    <input type="text" id="direccion" name="direccion" placeholder="Casa, apartamento, conjunto, etc." required class="inputs-texto">
+                </div>
+                <div>
+                    <input type="submit" id="btn-fin" value="Finalizar pedido">
+                </div>
+            </form>
+        </main>
+        <footer>
+            <p>© Derechos Reservados 2025. Desarrollado por Laura María Franco Ulloa y Juan Sebastián Ulloa Mejía</p>
+        </footer>
+    </body>
+</html>

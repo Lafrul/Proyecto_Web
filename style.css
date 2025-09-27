@@ -197,11 +197,33 @@ footer {
     }
 }
 
+#main-detalle{
+    color: var(--color-hover-nav);
+    margin-inline: 65px;
+    margin-top: 40px;
+    margin-bottom: 142px;
+    h2 {
+        font-size: 32px;
+        color: var(--color-header);
+        margin-top: 16px;
+    }
+    div {
+        margin-block: 15px;
+        font-size: 16px;
+    }
+    p{
+        margin-bottom: 35px;
+        margin-top: 20px;
+        font-size: 14px;
+        text-align: justify;
+    }
+}
+
 .inputs-texto{
     margin-top: 5px;
     margin-bottom: 10px;
     height: 30px;
-    width: 300px;
+    width: 400px;
     outline: none;
     border: none;
     border-bottom: 1px solid var(--color-header);
@@ -210,6 +232,10 @@ footer {
 }
 
 .inputs-texto::placeholder{
+    color: var(--color-placeholder);
+}
+
+select:invalid {
     color: var(--color-placeholder);
 }
 
@@ -224,6 +250,20 @@ footer {
 }
 
 #btn-submit:hover {
+    background-color: var(--color-hover-btn);
+}
+
+#btn-fin{
+    height: 30px;
+    width: 140px;
+    border-radius: 7px;
+    margin-top: 5px;
+    background-color: var(--color-header);
+    border: none;
+    color: white;
+}
+
+#btn-fin:hover {
     background-color: var(--color-hover-btn);
 }
 
