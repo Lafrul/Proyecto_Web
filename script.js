@@ -163,7 +163,7 @@ function initCarritoPage() {
   const $lista  = document.getElementById('carrito-lista');
   const $total  = document.getElementById('total');
   const $vaciar = document.getElementById('vaciar');
-  const $pagar  = document.getElementById('pagar');
+  const $continuar  = document.getElementById('continuar');
 
   // Si no estamos en carrito.html, salimos sin romper nada
   if (!$lista || !$total) return;
@@ -234,10 +234,34 @@ function initCarritoPage() {
     renderCarrito();
   });
 
-  $pagar?.addEventListener('click', () => {
+  $continuar?.addEventListener('click', () => {
+  const cart = getCart();
+  const entries = Object.entries(cart);
+  if (entries.length === 0) {
+    alert("El carrito está vacío");
+    return;
+  }
+
+  window.location.href = 'detalleCompra.html';
+});
+
+  renderCarrito();
+}
+
+/* ===================== Detalle compra ===================== */
+document.addEventListener('DOMContentLoaded', () => {
+  const $pagar = document.getElementById('pagar');
+  if (!$pagar) return;
+
+  $pagar.addEventListener('click', () => {
+    const form = document.querySelector('form');
+    if (form && !form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
     const cart = getCart();
     const entries = Object.entries(cart);
-    if (entries.length === 0) return;
 
     const itemsStr = entries.map(([idStr, cant]) => {
       const p = productos.find(pp => pp.id === Number(idStr));
@@ -256,13 +280,10 @@ function initCarritoPage() {
     const nuevaURL = `${location.origin}${location.pathname}?${params.toString()}`;
     history.replaceState(null, '', nuevaURL);
 
-    alert("Productos comprados");
+    alert("Pedido finalizado con éxito");
     emptyCart();
-    renderCarrito();
-  });
-
-  renderCarrito();
-}
+});
+});
 
 /* ===================== Bootstrap ===================== */
 document.addEventListener('DOMContentLoaded', () => {
