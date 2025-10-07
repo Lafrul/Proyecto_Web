@@ -1,3 +1,5 @@
+const API = 'https://script.google.com/macros/s/AKfycby1PE8A1GbuEkiSefoqRujAGhnNy-SjLqNDi5rA1bUxBhGuI4YDFWX7ABEe9BrMJFZd/exec';
+
 /* lista de productos */
 
 const productos = [

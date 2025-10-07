@@ -276,6 +276,13 @@ select:invalid {
     flex-direction: column;
     margin-inline: 55px;
     margin-top: 0px;
+    #cargando {
+        width: 85px;
+        height: 85px;
+        align-self: center;
+        margin-top: 250px;
+        margin-bottom: 360px;
+    }
     h2 {
         font-size: 32px;
         color: var(--color-header);
