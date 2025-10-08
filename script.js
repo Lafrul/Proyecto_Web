@@ -401,76 +401,70 @@ function buildOrderPayload() {
   };
 }
 
-async function enviarPedido() {
+// === POST sin CORS/errores visibles; no espera respuesta y permite navegar ===
+function enviarPedido() {
   const payload = buildOrderPayload();
 
   try {
-    await fetch(API, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-      cache: 'no-store',
-      mode: 'no-cors',   // evita TypeError: Failed to fetch
-      keepalive: true    // permite que el POST continúe aunque navegues
-    });
-  } catch (err) {
-    console.warn('Aviso: POST posiblemente enviado pero respuesta no legible por CORS.', err);
+    const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+    const ok = navigator.sendBeacon(API, blob);
+
+    if (!ok) {
+      // Fallback no-bloqueante
+      fetch(API, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        cache: 'no-store',
+        mode: 'no-cors',
+        keepalive: true
+      }).catch(() => { /* ignorar errores */ });
+    }
+  } catch (_) {
+    // Silenciar cualquier problema (igual vaciamos y navegamos)
   } finally {
-    // Vacía sí o sí
-    emptyCart();
+    emptyCart();           // vaciar siempre
+    forceClearOnNextPage(); // por si la navegación es muy rápida
   }
 }
-
 
 function initDetalleCompraPage() {
   const $pagar = document.getElementById('pagar');
   if (!$pagar) return;
 
-  // Garantiza que NO haga submit nativo
-  if ($pagar.getAttribute('type') !== 'button') {
-    $pagar.setAttribute('type', 'button');
-  }
+  // Evitar submit nativo del form
+  if ($pagar.getAttribute('type') !== 'button') $pagar.setAttribute('type', 'button');
 
   const form = document.querySelector('form');
   if (form) {
     form.addEventListener('submit', (e) => {
-      e.preventDefault();   // bloquea reload
-      $pagar.click();       // reutiliza la lógica del botón
+      e.preventDefault();
+      $pagar.click();
     });
   }
 
-  $pagar.addEventListener('click', async (e) => {
+  $pagar.addEventListener('click', (e) => {
     e.preventDefault();
-    if ($pagar.dataset.loading === '1') return;
 
     if (form && !form.checkValidity()) {
       form.reportValidity();
       return;
     }
 
-    try {
-      $pagar.dataset.loading = '1';
-      $pagar.disabled = true;
-      const original = $pagar.textContent;
-      $pagar.textContent = 'Enviando…';
+    // Feedback mínimo
+    $pagar.disabled = true;
+    const original = $pagar.textContent;
+    $pagar.textContent = 'Enviando…';
 
-      // Dispara el POST sin bloquear por CORS
-      await enviarPedido();
+    // Dispara “fire-and-forget” y navega SIEMPRE
+    enviarPedido(); // no-await
+    // Redirige con replace para no volver con “atrás”
+    setTimeout(() => { window.location.replace('index.html'); }, 100);
 
-      // Mensaje de éxito (opcional)
-      alert("Pedido finalizado con éxito");
-    } catch (err) {
-      // Aunque el navegador diga "failed to fetch", no nos detenemos
-      console.warn('Continuamos pese al error de red/CORS:', err);
-    } finally {
-      // Vaciar y redirigir SIEMPRE (soluciona ambos problemas)
-      emptyCart();
+    // Restaurar UI por si el usuario no navega de inmediato (seguro extra)
+    setTimeout(() => {
       $pagar.disabled = false;
-      $pagar.textContent = 'Pagar';
-      delete $pagar.dataset.loading;
-
-      // Pequeño delay para dar tiempo al keepalive (opcional)
-      setTimeout(() => { window.location.href = 'index.html'; }, 100);
-    }
+      $pagar.textContent = original || 'Pagar';
+    }, 500);
   });
 }
 
@@ -478,13 +472,15 @@ function initDetalleCompraPage() {
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('Inicializando…');
   try {
-    clearCartIfRequested();       // vacía si quedó marcado desde la compra anterior
-    resetCartOnFirstVisit();      // vacía la primera vez de la sesión
-    await loadProductos();        // carga catálogo (con loader y retry)
+    clearCartIfRequested();  // vacía si quedó marcado desde compra anterior
+    resetCartOnFirstVisit(); // vacía la primera vez de la sesión
+
+    await loadProductos();        // catálogo (con loader y retry)
     renderProductosIfNeeded();    // render catálogo (si aplica)
     initProductosPage();
     initCarritoPage();            // carrito con loader
-    initDetalleCompraPage();      // pago con vaciado garantizado
+    initDetalleCompraPage();      // pago con redirección garantizada
+
     console.log('Listo');
   } catch (e) {
     hideLoader();
