@@ -6,7 +6,7 @@ const fmt = n => Number(n).toFixed(2);
 
 // Control de UX en carga
 const MIN_SPINNER_MS = 700;     // spinner mínimo para evitar parpadeo
-const FETCH_TIMEOUT_MS = 8000;  // timeout por intento (GET)
+const FETCH_TIMEOUT_MS = 8000;  // timeout por intento
 const RETRY_DELAY_MS = 1200;    // backoff antes del reintento
 
 // =================== ESTADO ===================
@@ -40,6 +40,7 @@ function getCart() {
   catch { return {}; }
 }
 function setCart(cart) { localStorage.setItem(KEY, JSON.stringify(cart)); }
+
 function addToCart(id, cantidad = 1) {
   const cart = getCart();
   cart[id] = (cart[id] || 0) + cantidad;
@@ -59,33 +60,15 @@ function removeAll(id) {
 }
 function emptyCart() { setCart({}); }
 
-// =================== RESET POR SESIÓN ===================
-function resetCartOnFirstVisit() {
-  const FLAG = 'cart_session_started';
-  if (!sessionStorage.getItem(FLAG)) {
-    emptyCart(); // vacía solo una vez por sesión del navegador
-    sessionStorage.setItem(FLAG, '1');
-  }
-}
-
-// ======= VACÍO GARANTIZADO ENTRE PÁGINAS =======
-function forceClearOnNextPage() {
-  sessionStorage.setItem('clear_cart_after_order', '1');
-}
-function clearCartIfRequested() {
-  if (sessionStorage.getItem('clear_cart_after_order') === '1') {
-    emptyCart();
-    sessionStorage.removeItem('clear_cart_after_order');
-  }
-}
-
 // =================== UTILES DE RED ===================
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
 async function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort('timeout'), timeoutMs);
   try {
-    return await fetch(url, { ...options, signal: ctrl.signal });
+    const res = await fetch(url, { ...options, signal: ctrl.signal });
+    return res;
   } finally {
     clearTimeout(t);
   }
@@ -161,6 +144,7 @@ function renderProductosIfNeeded() {
   const $main = document.getElementById('main-productos');
   if (!$main) return;
 
+  // limpia todo menos el loader
   [...$main.children].forEach(n => { if (n.id !== 'cargando') n.remove(); });
 
   const h2 = document.createElement('h2');
@@ -175,6 +159,7 @@ function renderProductosIfNeeded() {
     return;
   }
 
+  // Agrupar por categoría
   const categorias = {};
   productos.forEach(p => {
     const cat = p.categoria || 'Sin Categoría';
@@ -182,6 +167,7 @@ function renderProductosIfNeeded() {
   });
   const keys = Object.keys(categorias).sort();
 
+  // Render por categoría
   keys.forEach(categoria => {
     const catHeader = document.createElement('h3');
     catHeader.textContent = categoria;
@@ -213,6 +199,7 @@ function renderProductosIfNeeded() {
       `;
       const img = art.querySelector('img');
       img.addEventListener('error', onImgError);
+
       grid.appendChild(art);
     });
   });
@@ -240,6 +227,7 @@ function initProductosPage() {
 
     addToCart(id, cantidad);
 
+    // feedback visual
     const originalText = btn.textContent;
     btn.textContent = '   ✓   ';
     btn.style.backgroundColor = '#28a745';
@@ -254,7 +242,7 @@ function initProductosPage() {
   });
 }
 
-// =================== PÁGINA CARRITO (con loader) ===================
+// =================== PÁGINA CARRITO (con LOADER) ===================
 function initCarritoPage() {
   const $lista  = document.getElementById('carrito-lista');
   const $total  = document.getElementById('total');
@@ -332,10 +320,11 @@ function initCarritoPage() {
     if (action === 'menos') removeOne(id);
     if (action === 'del')   removeAll(id);
 
-    renderCarrito({ withSpinner: false }); // sin parpadeo
+    // re-render rápido sin spinner para evitar parpadeo
+    renderCarrito({ withSpinner: false });
   });
 
-  // Vaciar carrito (con loader breve)
+  // Vaciar carrito
   $vaciar?.addEventListener('click', async () => {
     if (confirm('¿Vaciar el carrito?')) {
       emptyCart();
@@ -363,6 +352,7 @@ function buildOrderPayload() {
   const cart = getCart();
   const entries = Object.entries(cart);
 
+  // Arma los ítems con detalle
   const items = entries.map(([idStr, cant]) => {
     const p = productos.find(pp => pp.id === Number(idStr));
     return {
@@ -376,12 +366,14 @@ function buildOrderPayload() {
 
   const total = items.reduce((acc, it) => acc + it.subtotal, 0);
 
+  // ⚠️ Campos del formulario en detalleCompra.html
   const nombre    = document.querySelector('input[name="name"]')?.value?.trim() || '';
   const telefono  = document.querySelector('input[name="telephone"]')?.value?.trim() || '';
   const ciudad    = document.querySelector('select[name="ciudad"]')?.value?.trim() || '';
   const direccion = document.querySelector('input[name="direccion"]')?.value?.trim() || '';
   const otros     = document.querySelector('input[name="otros"]')?.value?.trim() || '';
 
+  // Cadena legible (opcional) y total numérico
   const productosStr = items
     .map(it => `${it.nombre} (x${it.cantidad}) - ${fmt(it.precioUnit)} c/u`)
     .join('; ');
@@ -395,30 +387,37 @@ function buildOrderPayload() {
     otros_datos: otros,
     productos: productosStr,
     valor_total: Number(total.toFixed(2)),
-    items
+    items // también enviamos el arreglo crudo
   };
 }
 
-// === POST fire-and-forget usando fetch no-cors (GAS lo recibe) ===
-function enviarPedido() {
+async function enviarPedido() {
   const payload = buildOrderPayload();
-  const body = JSON.stringify(payload);
+
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort('timeout'), 15000);
 
   try {
-    // Disparo sin await para no bloquear ni leer respuesta (evita "Failed to fetch")
-    fetch(API, {
+    const res = await fetch(API, {
       method: 'POST',
-      body,
+      // 👇 SIN headers Content-Type → evita preflight OPTIONS
+      // headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),   // tu GAS seguirá haciendo JSON.parse(e.postData.contents)
       cache: 'no-store',
-      mode: 'no-cors',   // sin CORS => no error en consola
-      keepalive: true    // sigue enviando aunque naveguemos
-      // (sin Content-Type explícito para evitar preflight; GAS hace JSON.parse(e.postData.contents))
+      redirect: 'follow',
+      signal: controller.signal,
     });
-  } catch (_) {
-    // ignoramos cualquier error del navegador
+
+    const text = await res.text().catch(() => '');
+    if (!res.ok) {
+      throw new Error(`Error HTTP ${res.status}: ${text}`);
+    }
+
+    // Si el servidor devolviera JSON, lo intento parsear (no es obligatorio):
+    try { return JSON.parse(text); } catch { return null; }
   } finally {
-    emptyCart();           // vaciar siempre
-    forceClearOnNextPage(); // por si navegamos muy rápido
+    clearTimeout(t);
+    emptyCart(); // ← vacía siempre aunque la respuesta sea opaca
   }
 }
 
@@ -426,39 +425,46 @@ function initDetalleCompraPage() {
   const $pagar = document.getElementById('pagar');
   if (!$pagar) return;
 
-  // Evitar submit nativo del form
-  if ($pagar.getAttribute('type') !== 'button') $pagar.setAttribute('type', 'button');
+  // Asegurar que NO haga submit nativo (evita que se corte el await)
+  if ($pagar.getAttribute('type') !== 'button') {
+    $pagar.setAttribute('type', 'button');
+  }
 
+  // Por si el form intenta enviarse con Enter
   const form = document.querySelector('form');
   if (form) {
     form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      $pagar.click();
+      e.preventDefault();      // bloquea reload
+      $pagar.click();          // reutiliza la misma lógica
     });
   }
 
-  $pagar.addEventListener('click', (e) => {
-    e.preventDefault();
+  $pagar.addEventListener('click', async (e) => {
+    e.preventDefault();        // bloqueo extra
+    if ($pagar.dataset.loading === '1') return;
 
     if (form && !form.checkValidity()) {
       form.reportValidity();
       return;
     }
 
-    // Feedback mínimo
-    $pagar.disabled = true;
-    const original = $pagar.textContent;
-    $pagar.textContent = 'Enviando…';
+    try {
+      $pagar.dataset.loading = '1';
+      $pagar.disabled = true;
+      const original = $pagar.textContent;
+      $pagar.textContent = 'Enviando…';
 
-    // Dispara el POST (no se espera) y redirige SIEMPRE
-    enviarPedido();
-    setTimeout(() => { window.location.replace('index.html'); }, 120);
-
-    // Restaurar UI si el usuario se queda (raro, pero seguro)
-    setTimeout(() => {
+      await enviarPedido();   // ← aquí se hace el POST real que tu GAS recibe
+      alert("Pedido finalizado con éxito");
+      window.location.href = 'index.html';
+    } catch (err) {
+      console.error(err);
+      alert(err.message || 'Error enviando pedido');
+    } finally {
       $pagar.disabled = false;
-      $pagar.textContent = original || 'Pagar';
-    }, 600);
+      $pagar.textContent = 'Pagar';
+      delete $pagar.dataset.loading;
+    }
   });
 }
 
@@ -466,15 +472,11 @@ function initDetalleCompraPage() {
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('Inicializando…');
   try {
-    clearCartIfRequested();  // vacía si quedó marcado desde compra anterior
-    resetCartOnFirstVisit(); // vacía la primera vez de la sesión
-
-    await loadProductos();        // catálogo (con loader y retry)
-    renderProductosIfNeeded();    // render catálogo (si aplica)
+    await loadProductos();          // con espera mínima, retry y sin alertas falsas
+    renderProductosIfNeeded();      // vista por categorías
     initProductosPage();
-    initCarritoPage();            // carrito con loader
-    initDetalleCompraPage();      // pago con redirección garantizada
-
+    initCarritoPage();              // ← ahora con loader en el render
+    initDetalleCompraPage();
     console.log('Listo');
   } catch (e) {
     hideLoader();
