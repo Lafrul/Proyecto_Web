@@ -138,7 +138,7 @@ async function loadProductos() {
     return { id, nombre, descripcion, precio, imagen, categoria };
   }).filter(p => p.nombre && Number.isFinite(p.precio));
 
-  console.log('✅ Productos cargados:', productos.length);
+  console.log('Productos cargados:', productos.length);
 
   // asegurar spinner mínimo
   const elapsed = performance.now() - start;
@@ -165,7 +165,7 @@ function renderProductosIfNeeded() {
     emptyP.style.cssText = 'padding:1rem;color:#666';
     emptyP.textContent = 'No hay productos disponibles en este momento.';
     $main.appendChild(emptyP);
-    console.warn('⚠️ Array de productos vacío');
+    console.warn('Array de productos vacío');
     return;
   }
 
@@ -176,7 +176,7 @@ function renderProductosIfNeeded() {
     (categorias[cat] ||= []).push(p);
   });
   const keys = Object.keys(categorias).sort();
-  console.log('📂 Categorías:', keys);
+  console.log('Categorías:', keys);
 
   // Render por categoría
   keys.forEach(categoria => {
@@ -218,7 +218,7 @@ function renderProductosIfNeeded() {
     });
   });
 
-  console.log(`✅ ${productos.length} productos renderizados en ${keys.length} categorías`);
+  console.log(` ${productos.length} productos renderizados en ${keys.length} categorías`);
 }
 
 // =================== EVENTOS PÁGINA PRODUCTOS ===================
@@ -349,6 +349,7 @@ function buildOrderPayload() {
   const cart = getCart();
   const entries = Object.entries(cart);
 
+  // Arma los ítems con detalle
   const items = entries.map(([idStr, cant]) => {
     const p = productos.find(pp => pp.id === Number(idStr));
     return {
@@ -362,24 +363,31 @@ function buildOrderPayload() {
 
   const total = items.reduce((acc, it) => acc + it.subtotal, 0);
 
-  const nombre    = document.querySelector('input[name="nombre"]')?.value?.trim() || '';
-  const telefono  = document.querySelector('input[name="telefono"]')?.value?.trim() || '';
-  const ciudad    = document.querySelector('input[name="ciudad"]')?.value?.trim() || '';
+  // ⚠️ Campos del formulario en detalleCompra.html
+  const nombre    = document.querySelector('input[name="name"]')?.value?.trim() || '';
+  const telefono  = document.querySelector('input[name="telephone"]')?.value?.trim() || '';
+  const ciudad    = document.querySelector('select[name="ciudad"]')?.value?.trim() || '';
   const direccion = document.querySelector('input[name="direccion"]')?.value?.trim() || '';
-  const notas     = document.querySelector('textarea[name="notas"]')?.value?.trim() || '';
+  const otros     = document.querySelector('input[name="otros"]')?.value?.trim() || '';
 
-  // Cadena legible de productos (por si tu hoja la usa)
-  const productosStr = items.map(it => `${it.nombre} (x${it.cantidad}) - ${fmt(it.precioUnit)} c/u`).join('; ');
+  // Cadena legible (opcional) y total numérico
+  const productosStr = items
+    .map(it => `${it.nombre} (x${it.cantidad}) - ${fmt(it.precioUnit)} c/u`)
+    .join('; ');
 
   return {
     timestamp: new Date().toISOString(),
-    nombre, telefono, ciudad, direccion,
-    otros_datos: notas,
+    nombre,
+    telefono,
+    ciudad,
+    direccion,
+    otros_datos: otros,
     productos: productosStr,
     valor_total: Number(total.toFixed(2)),
-    items // también envío el arreglo crudo por si lo quieres guardar como JSON
+    items // también enviamos el arreglo crudo
   };
 }
+
 
 async function enviarPedido() {
   const payload = buildOrderPayload();
@@ -437,17 +445,17 @@ function initDetalleCompraPage() {
 
 // =================== BOOTSTRAP ===================
 document.addEventListener('DOMContentLoaded', async () => {
-  console.log('🚀 Inicializando…');
+  console.log('Inicializando…');
   try {
     await loadProductos();          // con espera mínima, retry y sin alertas falsas
     renderProductosIfNeeded();      // vista por categorías
     initProductosPage();
     initCarritoPage();
     initDetalleCompraPage();
-    console.log('✅ Listo');
+    console.log('Listo');
   } catch (e) {
     // loadProductos ya mostró alerta tras 2 fallos; aquí solo garantizamos ocultar loader
     hideLoader();
-    console.error('❌ Error crítico:', e);
+    console.error('Error crítico:', e);
   }
 });
