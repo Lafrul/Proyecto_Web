@@ -1,61 +1,38 @@
+// =================== CONFIG ===================
 const API = 'https://script.google.com/macros/s/AKfycby1PE8A1GbuEkiSefoqRujAGhnNy-SjLqNDi5rA1bUxBhGuI4YDFWX7ABEe9BrMJFZd/exec';
-
-/* lista de productos */
-
-let productos = [];
-
-/* ------------------------------------------------------------------------------ */
-
-const carrito = {};
 const IMG_BASE = 'Imagenes/';
-
+const KEY = 'carrito_de_la_huerta';
 const fmt = n => Number(n).toFixed(2);
 
-/* Persistencia del carrito */
-const KEY = 'carrito_de_la_huerta';
+// =================== ESTADO ===================
+let productos = [];        // se carga asíncronamente desde la API
+
+// =================== LOADER ===================
+function showLoader() {
+  const img = document.getElementById('cargando');
+  if (img) img.style.display = 'block';
+}
+function hideLoader() {
+  const img = document.getElementById('cargando');
+  if (img) img.style.display = 'none';
+}
+
+// =================== IMG HELPER ===================
+// Evita 'Imagenes/Imagenes/...', soporta URL absolutas y placeholder
+function imgSrc(path) {
+  if (!path) return 'Imagenes/placeholder.png';
+  if (/^https?:\/\//i.test(path)) return path;
+  if (path.startsWith('Imagenes/')) return path;
+  return IMG_BASE + path;
+}
+
+// =================== CARRITO (localStorage) ===================
 function getCart() {
   try { return JSON.parse(localStorage.getItem(KEY)) || {}; }
   catch { return {}; }
 }
 function setCart(cart) { localStorage.setItem(KEY, JSON.stringify(cart)); }
 
-/* ------------------------------------------------------------------------------ */
-
-/* Carga de productos */
-
-async function loadProductos() {
-  showLoader();
-  try {
-    const res = await fetch(API, { method: 'GET' });
-    if (!res.ok) throw new Error('No se pudo cargar la lista de productos');
-    const json = await res.json();
-    const rows = Array.isArray(json?.data) ? json.data : [];
-
-
-    productos = rows
-      .map((r, idx) => {
-        const id = Number(r.IdProducto ?? r.id ?? (idx + 1));
-        const nombre = String(r.Nombre ?? r.nombre ?? `Producto ${id}`);
-        const descripcion = String(r['Descripción'] ?? r.Descripción ?? r.descripcion ?? '');
-        const precio = Number(
-          String(r.Precio ?? r.precio ?? 0)
-            .replace(/[^\d.,-]/g, '')
-            .replace(/\.(?=\d{3}\b)/g, '')
-            .replace(',', '.')
-        ) || 0;
-
-        const imagen = String(r.Imagen ?? r.imagen ?? '').trim();
-
-        const categoria = String(r.Categoria ?? r.categoria ?? '').trim();
-        return { id, nombre, descripcion, precio, imagen, categoria };
-      })
-      .filter(p => p.nombre && Number.isFinite(p.precio));
-  } finally {
-    hideLoader();
-  }
-}
-
-/* Operaciones */
 function addToCart(id, cantidad = 1) {
   const cart = getCart();
   cart[id] = (cart[id] || 0) + cantidad;
@@ -75,13 +52,105 @@ function removeAll(id) {
 }
 function emptyCart() { setCart({}); }
 
+// =================== CARGA DE PRODUCTOS (API) ===================
+async function loadProductos() {
+  showLoader();
+  try {
+    const res = await fetch(API, {
+      method: 'GET',
+      cache: 'no-store', // evita respuestas cacheadas en GH Pages
+    });
 
-/* Productos */
+    if (!res.ok) {
+      const body = await res.text().catch(() => '(sin cuerpo)');
+      throw new Error(`[HTTP ${res.status}] No se pudo cargar la lista de productos.\n${body}`);
+    }
 
+    let json;
+    try {
+      json = await res.json();
+    } catch {
+      const body = await res.text().catch(() => '(sin cuerpo)');
+      throw new Error(`La API no devolvió JSON válido.\nRespuesta cruda:\n${body}`);
+    }
+
+    if (!Array.isArray(json?.data)) {
+      console.warn('JSON recibido:', json);
+      throw new Error('La API no contiene "data" como arreglo. Revisa doGet/hoja.');
+    }
+
+    const rows = json.data;
+    // Encabezados: IdProducto | Nombre | Descripción | Precio | Imagen | Categoria
+    productos = rows
+      .map((r, idx) => {
+        const id = Number(r.IdProducto ?? r.id ?? (idx + 1));
+        const nombre = String(r.Nombre ?? r.nombre ?? `Producto ${id}`);
+        const descripcion = String(r['Descripción'] ?? r.Descripción ?? r.descripcion ?? '');
+        const precio = Number(
+          String(r.Precio ?? r.precio ?? 0)
+            .replace(/[^\d.,-]/g, '')
+            .replace(/\.(?=\d{3}\b)/g, '')
+            .replace(',', '.')
+        ) || 0;
+        const imagen = String(r.Imagen ?? r.imagen ?? '').trim();
+        const categoria = String(r.Categoria ?? r.categoria ?? '').trim();
+        return { id, nombre, descripcion, precio, imagen, categoria };
+      })
+      .filter(p => p.nombre && Number.isFinite(p.precio));
+
+    console.log('Productos cargados:', productos.length);
+  } catch (err) {
+    console.error('loadProductos() error:', err);
+    alert(`No se pudieron cargar los productos:\n${err.message}`);
+    throw err;
+  } finally {
+    hideLoader();
+  }
+}
+
+// =================== RENDER CATÁLOGO (opcional si lo generas por JS) ===================
+function renderProductosIfNeeded() {
+  const $main = document.getElementById('main-productos');
+  if (!$main) return;
+
+  // contenedor <section><div> según tu CSS
+  let $grid = $main.querySelector('section > div');
+  if (!$grid) {
+    const section = document.createElement('section');
+    const wrap = document.createElement('div');
+    section.appendChild(wrap);
+    $main.appendChild(section);
+    $grid = wrap;
+  }
+  $grid.innerHTML = '';
+
+  if (!productos.length) {
+    $grid.innerHTML = `<p style="padding:1rem">No hay productos disponibles.</p>`;
+    return;
+  }
+
+  productos.forEach(p => {
+    const art = document.createElement('article');
+    art.innerHTML = `
+      <img src="${imgSrc(p.imagen)}" alt="${p.nombre}">
+      <div>
+        <h3>${p.nombre}</h3>
+        <p>${p.descripcion || '&nbsp;'}</p>
+        <div>
+          <h4>$ ${fmt(p.precio)}</h4>
+          <input class="qty" type="number" min="1" value="1" />
+          <button class="btn-add" data-id="${p.id}">Agregar</button>
+        </div>
+      </div>
+    `;
+    $grid.appendChild(art);
+  });
+}
+
+// =================== EVENTOS PÁGINA PRODUCTOS ===================
 function initProductosPage() {
-  // Usa el contenedor donde están los <article> con los botones .btn-add
   const itemsContainer = document.querySelector('main');
-  if (!itemsContainer) return; // ← Importante para que no rompa en carrito.html
+  if (!itemsContainer) return; // no rompe en otras páginas
 
   itemsContainer.addEventListener('click', (e) => {
     const btn = e.target.closest('.btn-add');
@@ -95,21 +164,20 @@ function initProductosPage() {
     if (qtyInput) {
       cantidad = parseInt(qtyInput.value, 10);
       if (!Number.isFinite(cantidad) || cantidad < 1) cantidad = 1;
+      qtyInput.value = '1';
     }
 
     addToCart(id, cantidad);
-    if (qtyInput) qtyInput.value = '1';
   });
 }
 
-/* ===================== Página del Carrito ===================== */
+// =================== PÁGINA CARRITO ===================
 function initCarritoPage() {
   const $lista  = document.getElementById('carrito-lista');
   const $total  = document.getElementById('total');
   const $vaciar = document.getElementById('vaciar');
   const $continuar  = document.getElementById('continuar');
 
-  // Si no estamos en carrito.html, salimos sin romper nada
   if (!$lista || !$total) return;
 
   function renderCarrito() {
@@ -134,11 +202,11 @@ function initCarritoPage() {
       li.className = 'carrito-item';
       li.innerHTML = `
         <div class="thumb">
-          <img src="${IMG_BASE}${p.imagen}" alt="${p.nombre}">
+          <img src="${imgSrc(p.imagen)}" alt="${p.nombre}">
         </div>
 
         <div class="info">
-          <strong>${p.nombre.replaceAll('_',' ')}</strong>
+          <strong>${p.nombre.replace(/_/g,' ')}</strong>
           <small>$ ${fmt(p.precio)} c/u</small>
         </div>
 
@@ -179,71 +247,18 @@ function initCarritoPage() {
   });
 
   $continuar?.addEventListener('click', () => {
-  const cart = getCart();
-  const entries = Object.entries(cart);
-  if (entries.length === 0) {
-    alert("El carrito está vacío");
-    return;
-  }
-
-  window.location.href = 'detalleCompra.html';
-});
+    const cart = getCart();
+    if (!Object.keys(cart).length) {
+      alert("El carrito está vacío");
+      return;
+    }
+    window.location.href = 'detalleCompra.html';
+  });
 
   renderCarrito();
 }
 
-/* ===================== Detalle compra ===================== */
-document.addEventListener('DOMContentLoaded', () => {
-  const $pagar = document.getElementById('pagar');
-  if (!$pagar) return;
-
-  $pagar.addEventListener('click', async () => {
-    const form = document.querySelector('form');
-    if (form && !form.checkValidity()) {
-      form.reportValidity();
-      return;
-    }
-
-    try {
-      await enviarPedido();  // ← guarda en la hoja "Pedidos" con tu doPost
-      alert("Pedido finalizado con éxito");
-      emptyCart();
-    } catch (err) {
-      console.error(err);
-      alert(err.message || 'Error enviando pedido');
-    }
-  });
-});
-
-/* ===================== Bootstrap ===================== */
-document.addEventListener('DOMContentLoaded', async () => {
-  try {
-    await loadProductos();     
-    if (typeof renderProductosIfNeeded === 'function') {
-      renderProductosIfNeeded();
-    }
-    initProductosPage();
-    initCarritoPage();
-  } catch (e) {
-    hideLoader();
-    console.error(e);
-    alert('No se pudieron cargar los productos. Intenta más tarde.');
-  }
-});
-
-/* ===================== mostrar ocultar vainito de carga ===================== */
-
-function showLoader() {
-  const img = document.getElementById('cargando');
-  if (img) img.style.display = 'block';
-}
-function hideLoader() {
-  const img = document.getElementById('cargando');
-  if (img) img.style.display = 'none';
-}
-
-
-/* ===================== Construye payload y hace POST a la API =====================*/
+// =================== DETALLE + POST PEDIDO ===================
 function buildOrderPayload() {
   const cart = getCart();
   const entries = Object.entries(cart);
@@ -279,10 +294,49 @@ async function enviarPedido() {
   const res = await fetch(API, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
+    cache: 'no-store',
   });
   if (!res.ok) {
     const txt = await res.text().catch(() => '');
     throw new Error(`No se pudo enviar el pedido.\n${txt}`);
   }
 }
+
+function initDetalleCompraPage() {
+  const $pagar = document.getElementById('pagar');
+  if (!$pagar) return;
+
+  $pagar.addEventListener('click', async () => {
+    const form = document.querySelector('form');
+    if (form && !form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+
+    try {
+      await enviarPedido();
+      alert("Pedido finalizado con éxito");
+      emptyCart();
+    } catch (err) {
+      console.error(err);
+      alert(err.message || 'Error enviando pedido');
+    }
+  });
+}
+
+// =================== BOOTSTRAP ===================
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    await loadProductos();                 // muestra/oculta loader internamente
+    renderProductosIfNeeded();             // si el HTML del catálogo es dinámico
+    initProductosPage();
+    initCarritoPage();
+    initDetalleCompraPage();
+    // testAPI(); // <- opcional para depurar (ver abajo)
+  } catch (e) {
+    hideLoader();
+    console.error(e);
+    alert('No se pudieron cargar los productos. Intenta más tarde.');
+  }
+});
