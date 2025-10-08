@@ -56,10 +56,7 @@ function emptyCart() { setCart({}); }
 async function loadProductos() {
   showLoader();
   try {
-    const res = await fetch(API, {
-      method: 'GET',
-      cache: 'no-store', // evita respuestas cacheadas en GH Pages
-    });
+    const res = await fetch(API, { method: 'GET', cache: 'no-store' });
 
     if (!res.ok) {
       const body = await res.text().catch(() => '(sin cuerpo)');
@@ -75,57 +72,69 @@ async function loadProductos() {
     }
 
     if (!Array.isArray(json?.data)) {
-      console.warn('JSON recibido:', json);
+      console.warn('JSON recibido SIN data[]:', json);
       throw new Error('La API no contiene "data" como arreglo. Revisa doGet/hoja.');
     }
 
     const rows = json.data;
-    // Encabezados: IdProducto | Nombre | Descripción | Precio | Imagen | Categoria
-    productos = rows
-      .map((r, idx) => {
-        const id = Number(r.IdProducto ?? r.id ?? (idx + 1));
-        const nombre = String(r.Nombre ?? r.nombre ?? `Producto ${id}`);
-        const descripcion = String(r['Descripción'] ?? r.Descripción ?? r.descripcion ?? '');
-        const precio = Number(
-          String(r.Precio ?? r.precio ?? 0)
-            .replace(/[^\d.,-]/g, '')
-            .replace(/\.(?=\d{3}\b)/g, '')
-            .replace(',', '.')
-        ) || 0;
-        const imagen = String(r.Imagen ?? r.imagen ?? '').trim();
-        const categoria = String(r.Categoria ?? r.categoria ?? '').trim();
-        return { id, nombre, descripcion, precio, imagen, categoria };
-      })
-      .filter(p => p.nombre && Number.isFinite(p.precio));
+    productos = rows.map((r, idx) => {
+      const id = Number(r.IdProducto ?? r.id ?? (idx + 1));
+      const nombre = String(r.Nombre ?? r.nombre ?? `Producto ${id}`);
+      const descripcion = String(r['Descripción'] ?? r.Descripción ?? r.descripcion ?? '');
+      const precio = Number(
+        String(r.Precio ?? r.precio ?? 0)
+          .replace(/[^\d.,-]/g, '')
+          .replace(/\.(?=\d{3}\b)/g, '')
+          .replace(',', '.')
+      ) || 0;
+      const imagen = String(r.Imagen ?? r.imagen ?? '').trim();
+      const categoria = String(r.Categoria ?? r.categoria ?? '').trim();
+      return { id, nombre, descripcion, precio, imagen, categoria };
+    }).filter(p => p.nombre && Number.isFinite(p.precio));
 
-    console.log('Productos cargados:', productos.length);
+    console.log('Productos cargados desde API:', productos.length, productos.slice(0,3));
   } catch (err) {
     console.error('loadProductos() error:', err);
     alert(`No se pudieron cargar los productos:\n${err.message}`);
-    throw err;
+
+    // Fallback visual (para comprobar que el render funciona aunque la API falle)
+    productos = [];
   } finally {
     hideLoader();
   }
 }
+
 
 // =================== RENDER CATÁLOGO (opcional si lo generas por JS) ===================
 function renderProductosIfNeeded() {
   const $main = document.getElementById('main-productos');
   if (!$main) return;
 
-  // contenedor <section><div> según tu CSS
-  let $grid = $main.querySelector('section > div');
-  if (!$grid) {
-    const section = document.createElement('section');
-    const wrap = document.createElement('div');
-    section.appendChild(wrap);
-    $main.appendChild(section);
-    $grid = wrap;
-  }
-  $grid.innerHTML = '';
+  // Limpia todo menos el loader (por si todavía está visible)
+  [...$main.children].forEach(n => {
+    if (n.id !== 'cargando') n.remove();
+  });
 
-  if (!productos.length) {
-    $grid.innerHTML = `<p style="padding:1rem">No hay productos disponibles.</p>`;
+  // Título visible (ayuda a notar que sí se renderizó la sección)
+  const h2 = document.createElement('h2');
+  h2.textContent = 'Productos';
+  $main.appendChild(h2);
+
+  // Estructura esperada por tu CSS: <section><div>...</div></section>
+  const section = document.createElement('section');
+  const grid = document.createElement('div');
+  section.appendChild(grid);
+  $main.appendChild(section);
+
+  if (!Array.isArray(productos)) {
+    grid.innerHTML = `<p style="padding:1rem;color:#b00">Error: productos no es un arreglo.</p>`;
+    console.error('renderProductosIfNeeded(): productos =', productos);
+    return;
+  }
+
+  if (productos.length === 0) {
+    grid.innerHTML = `<p style="padding:1rem">No hay productos disponibles.</p>`;
+    console.warn('No hay productos para renderizar (length=0).');
     return;
   }
 
@@ -143,9 +152,12 @@ function renderProductosIfNeeded() {
         </div>
       </div>
     `;
-    $grid.appendChild(art);
+    grid.appendChild(art);
   });
+
+  console.log(`Render OK: ${productos.length} productos`);
 }
+
 
 // =================== EVENTOS PÁGINA PRODUCTOS ===================
 function initProductosPage() {
