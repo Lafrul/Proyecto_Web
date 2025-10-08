@@ -797,7 +797,6 @@ select:invalid {
     #cargando {
         width: 85px;
         height: 85px;
-        align-self: center;
         margin-top: 20px;
         margin-bottom: 30px;
     }
