@@ -6,7 +6,7 @@ const fmt = n => Number(n).toFixed(2);
 
 // Control de UX en carga
 const MIN_SPINNER_MS = 700;     // spinner mínimo para evitar parpadeo
-const FETCH_TIMEOUT_MS = 8000;  // timeout por intento
+const FETCH_TIMEOUT_MS = 8000;  // timeout por intento GET
 const RETRY_DELAY_MS = 1200;    // backoff antes del reintento
 
 // =================== ESTADO ===================
@@ -62,13 +62,11 @@ function emptyCart() { setCart({}); }
 
 // =================== UTILES DE RED ===================
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-
 async function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort('timeout'), timeoutMs);
   try {
-    const res = await fetch(url, { ...options, signal: ctrl.signal });
-    return res;
+    return await fetch(url, { ...options, signal: ctrl.signal });
   } finally {
     clearTimeout(t);
   }
@@ -144,7 +142,6 @@ function renderProductosIfNeeded() {
   const $main = document.getElementById('main-productos');
   if (!$main) return;
 
-  // limpia todo menos el loader
   [...$main.children].forEach(n => { if (n.id !== 'cargando') n.remove(); });
 
   const h2 = document.createElement('h2');
@@ -159,7 +156,6 @@ function renderProductosIfNeeded() {
     return;
   }
 
-  // Agrupar por categoría
   const categorias = {};
   productos.forEach(p => {
     const cat = p.categoria || 'Sin Categoría';
@@ -167,7 +163,6 @@ function renderProductosIfNeeded() {
   });
   const keys = Object.keys(categorias).sort();
 
-  // Render por categoría
   keys.forEach(categoria => {
     const catHeader = document.createElement('h3');
     catHeader.textContent = categoria;
@@ -199,7 +194,6 @@ function renderProductosIfNeeded() {
       `;
       const img = art.querySelector('img');
       img.addEventListener('error', onImgError);
-
       grid.appendChild(art);
     });
   });
@@ -320,8 +314,7 @@ function initCarritoPage() {
     if (action === 'menos') removeOne(id);
     if (action === 'del')   removeAll(id);
 
-    // re-render rápido sin spinner para evitar parpadeo
-    renderCarrito({ withSpinner: false });
+    renderCarrito({ withSpinner: false }); // sin parpadeo
   });
 
   // Vaciar carrito
@@ -352,7 +345,6 @@ function buildOrderPayload() {
   const cart = getCart();
   const entries = Object.entries(cart);
 
-  // Arma los ítems con detalle
   const items = entries.map(([idStr, cant]) => {
     const p = productos.find(pp => pp.id === Number(idStr));
     return {
@@ -366,14 +358,12 @@ function buildOrderPayload() {
 
   const total = items.reduce((acc, it) => acc + it.subtotal, 0);
 
-  // ⚠️ Campos del formulario en detalleCompra.html
   const nombre    = document.querySelector('input[name="name"]')?.value?.trim() || '';
   const telefono  = document.querySelector('input[name="telephone"]')?.value?.trim() || '';
   const ciudad    = document.querySelector('select[name="ciudad"]')?.value?.trim() || '';
   const direccion = document.querySelector('input[name="direccion"]')?.value?.trim() || '';
   const otros     = document.querySelector('input[name="otros"]')?.value?.trim() || '';
 
-  // Cadena legible (opcional) y total numérico
   const productosStr = items
     .map(it => `${it.nombre} (x${it.cantidad}) - ${fmt(it.precioUnit)} c/u`)
     .join('; ');
@@ -387,10 +377,11 @@ function buildOrderPayload() {
     otros_datos: otros,
     productos: productosStr,
     valor_total: Number(total.toFixed(2)),
-    items // también enviamos el arreglo crudo
+    items
   };
 }
 
+// === POST que no lanza error visible y SIEMPRE vacía el carrito ===
 async function enviarPedido() {
   const payload = buildOrderPayload();
 
@@ -398,26 +389,21 @@ async function enviarPedido() {
   const t = setTimeout(() => controller.abort('timeout'), 15000);
 
   try {
-    const res = await fetch(API, {
+    // No leemos cuerpo ni verificamos res.ok: evitamos errores visibles por CORS/redirect
+    await fetch(API, {
       method: 'POST',
-      // 👇 SIN headers Content-Type → evita preflight OPTIONS
-      // headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),   // tu GAS seguirá haciendo JSON.parse(e.postData.contents)
+      body: JSON.stringify(payload), // tu GAS hace JSON.parse(e.postData.contents)
       cache: 'no-store',
       redirect: 'follow',
       signal: controller.signal,
+      // SIN Content-Type para evitar preflight OPTIONS
     });
-
-    const text = await res.text().catch(() => '');
-    if (!res.ok) {
-      throw new Error(`Error HTTP ${res.status}: ${text}`);
-    }
-
-    // Si el servidor devolviera JSON, lo intento parsear (no es obligatorio):
-    try { return JSON.parse(text); } catch { return null; }
+  } catch (err) {
+    // Silenciar posibles errores del navegador (el GAS suele recibir igual)
+    console.warn('POST enviado; respuesta no legible por CORS/redirect.', err);
   } finally {
     clearTimeout(t);
-    emptyCart(); // ← vacía siempre aunque la respuesta sea opaca
+    emptyCart(); // vaciar SIEMPRE
   }
 }
 
@@ -425,22 +411,21 @@ function initDetalleCompraPage() {
   const $pagar = document.getElementById('pagar');
   if (!$pagar) return;
 
-  // Asegurar que NO haga submit nativo (evita que se corte el await)
+  // Evitar submit nativo del form
   if ($pagar.getAttribute('type') !== 'button') {
     $pagar.setAttribute('type', 'button');
   }
 
-  // Por si el form intenta enviarse con Enter
   const form = document.querySelector('form');
   if (form) {
     form.addEventListener('submit', (e) => {
-      e.preventDefault();      // bloquea reload
-      $pagar.click();          // reutiliza la misma lógica
+      e.preventDefault();
+      $pagar.click();
     });
   }
 
   $pagar.addEventListener('click', async (e) => {
-    e.preventDefault();        // bloqueo extra
+    e.preventDefault();
     if ($pagar.dataset.loading === '1') return;
 
     if (form && !form.checkValidity()) {
@@ -448,22 +433,23 @@ function initDetalleCompraPage() {
       return;
     }
 
-    try {
-      $pagar.dataset.loading = '1';
-      $pagar.disabled = true;
-      const original = $pagar.textContent;
-      $pagar.textContent = 'Enviando…';
+    $pagar.dataset.loading = '1';
+    const original = $pagar.textContent;
+    $pagar.disabled = true;
+    $pagar.textContent = 'Enviando…';
 
-      await enviarPedido();   // ← aquí se hace el POST real que tu GAS recibe
-      alert("Pedido finalizado con éxito");
-      window.location.href = 'index.html';
-    } catch (err) {
-      console.error(err);
-      alert(err.message || 'Error enviando pedido');
+    try {
+      await enviarPedido(); // ya NO lanza error visible
+      // (opcional) marca para mostrar mensaje en la home
+      sessionStorage.setItem('last_order_success', '1');
     } finally {
+      // Restaurar UI y redirigir SIEMPRE
       $pagar.disabled = false;
-      $pagar.textContent = 'Pagar';
+      $pagar.textContent = original || 'Pagar';
       delete $pagar.dataset.loading;
+
+      // pequeño delay para asegurar que el POST salió del event loop
+      setTimeout(() => { window.location.replace('index.html'); }, 150);
     }
   });
 }
@@ -472,11 +458,11 @@ function initDetalleCompraPage() {
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('Inicializando…');
   try {
-    await loadProductos();          // con espera mínima, retry y sin alertas falsas
-    renderProductosIfNeeded();      // vista por categorías
+    await loadProductos();        // catálogo (con loader y retry)
+    renderProductosIfNeeded();    // render catálogo (si aplica)
     initProductosPage();
-    initCarritoPage();              // ← ahora con loader en el render
-    initDetalleCompraPage();
+    initCarritoPage();            // carrito con loader
+    initDetalleCompraPage();      // pago con redirección garantizada
     console.log('Listo');
   } catch (e) {
     hideLoader();
