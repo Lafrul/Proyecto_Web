@@ -246,7 +246,7 @@ function initProductosPage() {
 
     // feedback visual
     const originalText = btn.textContent;
-    btn.textContent = '✓ Agregado';
+    btn.textContent = '   ✓   ';
     btn.style.backgroundColor = '#28a745';
     btn.style.color = '#fff';
     btn.disabled = true;
@@ -392,7 +392,6 @@ function buildOrderPayload() {
 async function enviarPedido() {
   const payload = buildOrderPayload();
 
-  // Opcional: timeout para evitar que la promesa quede colgada si la red falla
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort('timeout'), 15000);
 
@@ -416,6 +415,7 @@ async function enviarPedido() {
     try { return JSON.parse(text); } catch { return null; }
   } finally {
     clearTimeout(t);
+    emptyCart();
   }
 }
 
@@ -433,8 +433,8 @@ function initDetalleCompraPage() {
 
     try {
       await enviarPedido();
-      alert("Pedido finalizado con éxito");
       emptyCart();
+      alert("Pedido finalizado con éxito");
       window.location.href = 'index.html';
     } catch (err) {
       console.error(err);
