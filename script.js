@@ -221,7 +221,6 @@ function initProductosPage() {
 
     addToCart(id, cantidad);
 
-    // feedback visual
     const originalText = btn.textContent;
     btn.textContent = '   ✓   ';
     btn.style.backgroundColor = '#28a745';
@@ -301,7 +300,6 @@ function initCarritoPage() {
     }
   }
 
-  // Eventos de + / - / eliminar
   $lista.addEventListener('click', (e) => {
     const btnQty = e.target.closest('.btn-qty, .btn-remove');
     if (!btnQty) return;
@@ -317,7 +315,6 @@ function initCarritoPage() {
     renderCarrito({ withSpinner: false }); // sin parpadeo
   });
 
-  // Vaciar carrito
   $vaciar?.addEventListener('click', async () => {
     if (confirm('¿Vaciar el carrito?')) {
       emptyCart();
@@ -326,7 +323,6 @@ function initCarritoPage() {
     }
   });
 
-  // Continuar a detalle
   $continuar?.addEventListener('click', () => {
     const cart = getCart();
     if (!Object.keys(cart).length) {
@@ -336,11 +332,23 @@ function initCarritoPage() {
     window.location.href = 'detalleCompra.html';
   });
 
-  // Primer render con loader
   renderCarrito({ withSpinner: true });
 }
 
 // =================== DETALLE + POST PEDIDO ===================
+// URL robusta para ir a index.html en la MISMA carpeta del archivo actual
+function buildHomeUrl() {
+  try {
+    const u = new URL(window.location.href);
+    const parts = u.pathname.split('/');
+    parts.pop(); // quita el archivo actual
+    const maybe = parts.join('/') + '/index.html';
+    return `${u.origin}${maybe}`;
+  } catch {
+    return '/index.html'; // fallback
+  }
+}
+
 function buildOrderPayload() {
   const cart = getCart();
   const entries = Object.entries(cart);
@@ -381,30 +389,32 @@ function buildOrderPayload() {
   };
 }
 
-// === POST que no lanza error visible y SIEMPRE vacía el carrito ===
-async function enviarPedido() {
+// Envío NO bloqueante con límite de espera (race) y sin errores visibles
+async function enviarPedidoNoBloqueante() {
   const payload = buildOrderPayload();
+  const body = JSON.stringify(payload);
 
-  const controller = new AbortController();
-  const t = setTimeout(() => controller.abort('timeout'), 15000);
+  const fetchPromise = (async () => {
+    try {
+      await fetch(API, {
+        method: 'POST',
+        body,
+        cache: 'no-store',
+        keepalive: true,  // sigue enviando aunque naveguemos
+        // SIN Content-Type para evitar preflight; GAS usa JSON.parse(e.postData.contents)
+      });
+    } catch (err) {
+      // Silenciamos; muchas veces igual llega al GAS
+      console.warn('Aviso: respuesta no legible o CORS/redirect.', err);
+    }
+  })();
 
-  try {
-    // No leemos cuerpo ni verificamos res.ok: evitamos errores visibles por CORS/redirect
-    await fetch(API, {
-      method: 'POST',
-      body: JSON.stringify(payload), // tu GAS hace JSON.parse(e.postData.contents)
-      cache: 'no-store',
-      redirect: 'follow',
-      signal: controller.signal,
-      // SIN Content-Type para evitar preflight OPTIONS
-    });
-  } catch (err) {
-    // Silenciar posibles errores del navegador (el GAS suele recibir igual)
-    console.warn('POST enviado; respuesta no legible por CORS/redirect.', err);
-  } finally {
-    clearTimeout(t);
-    emptyCart(); // vaciar SIEMPRE
-  }
+  // Damos una ventanita de 1200ms y seguimos (para no “quedarnos pegados”)
+  const timeoutPromise = new Promise(r => setTimeout(r, 1200));
+  await Promise.race([fetchPromise, timeoutPromise]);
+
+  // Vaciar ya mismo (y por si acaso al cargar la home también quedará vacío)
+  emptyCart();
 }
 
 function initDetalleCompraPage() {
@@ -438,32 +448,31 @@ function initDetalleCompraPage() {
     $pagar.disabled = true;
     $pagar.textContent = 'Enviando…';
 
+    const homeUrl = buildHomeUrl();
+
     try {
-      await enviarPedido(); // ya NO lanza error visible
-      // (opcional) marca para mostrar mensaje en la home
-      sessionStorage.setItem('last_order_success', '1');
+      // Enviar “fire-and-forget” con ventanita corta y sin errores visibles
+      await enviarPedidoNoBloqueante();
     } finally {
-      // Restaurar UI y redirigir SIEMPRE
+      // Restaurar UI por si el usuario cancela la navegación
       $pagar.disabled = false;
       $pagar.textContent = original || 'Pagar';
       delete $pagar.dataset.loading;
 
-      // pequeño delay para asegurar que el POST salió del event loop
-      setTimeout(() => { window.location.replace('index.html'); }, 150);
+      // Redirigir SIEMPRE (pequeño delay para salir del event loop)
+      setTimeout(() => { window.location.replace(homeUrl); }, 150);
     }
   });
 }
 
 // =================== BOOTSTRAP ===================
 document.addEventListener('DOMContentLoaded', async () => {
-  console.log('Inicializando…');
   try {
-    await loadProductos();        // catálogo (con loader y retry)
-    renderProductosIfNeeded();    // render catálogo (si aplica)
+    await loadProductos();
+    renderProductosIfNeeded();
     initProductosPage();
-    initCarritoPage();            // carrito con loader
-    initDetalleCompraPage();      // pago con redirección garantizada
-    console.log('Listo');
+    initCarritoPage();
+    initDetalleCompraPage();
   } catch (e) {
     hideLoader();
     console.error('Error crítico:', e);
