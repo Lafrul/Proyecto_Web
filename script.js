@@ -4,8 +4,13 @@ const IMG_BASE = 'Imagenes/';
 const KEY = 'carrito_de_la_huerta';
 const fmt = n => Number(n).toFixed(2);
 
+// Control de UX en carga
+const MIN_SPINNER_MS = 700;     // spinner mínimo para evitar parpadeo
+const FETCH_TIMEOUT_MS = 8000;  // timeout por intento
+const RETRY_DELAY_MS = 1200;    // backoff antes del reintento
+
 // =================== ESTADO ===================
-let productos = [];        // se carga asíncronamente desde la API
+let productos = [];
 
 // =================== LOADER ===================
 function showLoader() {
@@ -18,12 +23,15 @@ function hideLoader() {
 }
 
 // =================== IMG HELPER ===================
-// Evita 'Imagenes/Imagenes/...', soporta URL absolutas y placeholder
 function imgSrc(path) {
   if (!path) return 'Imagenes/placeholder.png';
   if (/^https?:\/\//i.test(path)) return path;
   if (path.startsWith('Imagenes/')) return path;
   return IMG_BASE + path;
+}
+function onImgError(ev) {
+  ev.target.onerror = null;
+  ev.target.src = 'Imagenes/placeholder.png';
 }
 
 // =================== CARRITO (localStorage) ===================
@@ -52,117 +60,171 @@ function removeAll(id) {
 }
 function emptyCart() { setCart({}); }
 
+// =================== UTILES DE RED ===================
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort('timeout'), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: ctrl.signal });
+    return res;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 // =================== CARGA DE PRODUCTOS (API) ===================
 async function loadProductos() {
+  const start = performance.now();
   showLoader();
-  try {
-    const res = await fetch(API, { method: 'GET', cache: 'no-store' });
 
+  // función que hace 1 intento de fetch+parse
+  const tryOnce = async () => {
+    const res = await fetchWithTimeout(API, { method: 'GET', cache: 'no-store' });
     if (!res.ok) {
       const body = await res.text().catch(() => '(sin cuerpo)');
-      throw new Error(`[HTTP ${res.status}] No se pudo cargar la lista de productos.\n${body}`);
+      throw new Error(`[HTTP ${res.status}] No se pudo cargar productos.\n${body}`);
     }
-
     let json;
-    try {
-      json = await res.json();
-    } catch {
+    try { json = await res.json(); }
+    catch {
       const body = await res.text().catch(() => '(sin cuerpo)');
-      throw new Error(`La API no devolvió JSON válido.\nRespuesta cruda:\n${body}`);
+      throw new Error(`Respuesta no-JSON de la API.\nCuerpo:\n${body}`);
     }
-
     if (!Array.isArray(json?.data)) {
       console.warn('JSON recibido SIN data[]:', json);
       throw new Error('La API no contiene "data" como arreglo. Revisa doGet/hoja.');
     }
+    return json.data;
+  };
 
-    const rows = json.data;
-    productos = rows.map((r, idx) => {
-      const id = Number(r.IdProducto ?? r.id ?? (idx + 1));
-      const nombre = String(r.Nombre ?? r.nombre ?? `Producto ${id}`);
-      const descripcion = String(r['Descripción'] ?? r.Descripción ?? r.descripcion ?? '');
-      const precio = Number(
-        String(r.Precio ?? r.precio ?? 0)
-          .replace(/[^\d.,-]/g, '')
-          .replace(/\.(?=\d{3}\b)/g, '')
-          .replace(',', '.')
-      ) || 0;
-      const imagen = String(r.Imagen ?? r.imagen ?? '').trim();
-      const categoria = String(r.Categoria ?? r.categoria ?? '').trim();
-      return { id, nombre, descripcion, precio, imagen, categoria };
-    }).filter(p => p.nombre && Number.isFinite(p.precio));
-
-    console.log('Productos cargados desde API:', productos.length, productos.slice(0,3));
-  } catch (err) {
-    console.error('loadProductos() error:', err);
-    alert(`No se pudieron cargar los productos:\n${err.message}`);
-
-    // Fallback visual (para comprobar que el render funciona aunque la API falle)
-    productos = [];
-  } finally {
-    hideLoader();
+  // hasta 2 intentos con backoff
+  let rows;
+  try {
+    rows = await tryOnce();
+  } catch (e1) {
+    console.warn('Primer intento falló, reintentando…', e1);
+    await sleep(RETRY_DELAY_MS);
+    try {
+      rows = await tryOnce();
+    } catch (e2) {
+      console.error('Segundo intento falló:', e2);
+      // espera mínima del spinner antes de alertar
+      const elapsed = performance.now() - start;
+      const remaining = Math.max(0, MIN_SPINNER_MS - elapsed);
+      await sleep(remaining);
+      hideLoader();
+      // alerta única después de 2 fallos
+      alert(`No se pudieron cargar los productos.\n${e2.message}`);
+      productos = [];
+      throw e2; // para que el bootstrap haga su catch también
+    }
   }
+
+  // Mapear columnas de tu hoja
+  productos = rows.map((r, idx) => {
+    const id = Number(r.IdProducto ?? r.id ?? (idx + 1));
+    const nombre = String(r.Nombre ?? r.nombre ?? `Producto ${id}`);
+    const descripcion = String(r['Descripción'] ?? r.Descripción ?? r.descripcion ?? '');
+    const precio = Number(
+      String(r.Precio ?? r.precio ?? 0)
+        .replace(/[^\d.,-]/g, '')
+        .replace(/\.(?=\d{3}\b)/g, '')
+        .replace(',', '.')
+    ) || 0;
+    const imagen = String(r.Imagen ?? r.imagen ?? '').trim();
+    const categoria = String(r.Categoria ?? r.categoria ?? '').trim();
+    return { id, nombre, descripcion, precio, imagen, categoria };
+  }).filter(p => p.nombre && Number.isFinite(p.precio));
+
+  console.log('✅ Productos cargados:', productos.length);
+
+  // asegurar spinner mínimo
+  const elapsed = performance.now() - start;
+  const remaining = Math.max(0, MIN_SPINNER_MS - elapsed);
+  await sleep(remaining);
+  hideLoader();
 }
 
-
-// =================== RENDER CATÁLOGO (opcional si lo generas por JS) ===================
+// =================== RENDER CATÁLOGO (por categorías) ===================
 function renderProductosIfNeeded() {
   const $main = document.getElementById('main-productos');
   if (!$main) return;
 
-  // Limpia todo menos el loader (por si todavía está visible)
-  [...$main.children].forEach(n => {
-    if (n.id !== 'cargando') n.remove();
-  });
+  // limpia todo menos el loader
+  [...$main.children].forEach(n => { if (n.id !== 'cargando') n.remove(); });
 
-  // Título visible (ayuda a notar que sí se renderizó la sección)
+  // Título principal
   const h2 = document.createElement('h2');
   h2.textContent = 'Productos';
   $main.appendChild(h2);
 
-  // Estructura esperada por tu CSS: <section><div>...</div></section>
-  const section = document.createElement('section');
-  const grid = document.createElement('div');
-  section.appendChild(grid);
-  $main.appendChild(section);
-
-  if (!Array.isArray(productos)) {
-    grid.innerHTML = `<p style="padding:1rem;color:#b00">Error: productos no es un arreglo.</p>`;
-    console.error('renderProductosIfNeeded(): productos =', productos);
+  if (!Array.isArray(productos) || productos.length === 0) {
+    const emptyP = document.createElement('p');
+    emptyP.style.cssText = 'padding:1rem;color:#666';
+    emptyP.textContent = 'No hay productos disponibles en este momento.';
+    $main.appendChild(emptyP);
+    console.warn('⚠️ Array de productos vacío');
     return;
   }
 
-  if (productos.length === 0) {
-    grid.innerHTML = `<p style="padding:1rem">No hay productos disponibles.</p>`;
-    console.warn('No hay productos para renderizar (length=0).');
-    return;
-  }
-
+  // Agrupar por categoría
+  const categorias = {};
   productos.forEach(p => {
-    const art = document.createElement('article');
-    art.innerHTML = `
-      <img src="${imgSrc(p.imagen)}" alt="${p.nombre}">
-      <div>
-        <h3>${p.nombre}</h3>
-        <p>${p.descripcion || '&nbsp;'}</p>
-        <div>
-          <h4>$ ${fmt(p.precio)}</h4>
-          <input class="qty" type="number" min="1" value="1" />
-          <button class="btn-add" data-id="${p.id}">Agregar</button>
-        </div>
-      </div>
+    const cat = p.categoria || 'Sin Categoría';
+    (categorias[cat] ||= []).push(p);
+  });
+  const keys = Object.keys(categorias).sort();
+  console.log('📂 Categorías:', keys);
+
+  // Render por categoría
+  keys.forEach(categoria => {
+    // cabecera visual de categoría
+    const catHeader = document.createElement('h3');
+    catHeader.textContent = categoria;
+    catHeader.style.cssText = `
+      margin-top: 30px; margin-bottom: 15px;
+      color: var(--color-header); font-size: 24px; font-weight: 600;
+      border-bottom: 3px solid var(--color-header); padding-bottom: 10px; padding-left: 5px;
     `;
-    grid.appendChild(art);
+    $main.appendChild(catHeader);
+
+    // contenedor esperado por tu CSS: <section><div>...</div></section>
+    const section = document.createElement('section');
+    const grid = document.createElement('div');
+    section.appendChild(grid);
+    $main.appendChild(section);
+
+    categorias[categoria].forEach(p => {
+      const art = document.createElement('article');
+      art.innerHTML = `
+        <img src="${imgSrc(p.imagen)}" alt="${p.nombre}" id="mix">
+        <div>
+          <h3>${p.nombre}</h3>
+          <p>${p.descripcion || 'Sin descripción'}</p>
+          <div>
+            <h4>$ ${fmt(p.precio)}</h4>
+            <input class="qty" type="number" min="1" value="1" />
+            <button class="btn-add" data-id="${p.id}">Agregar</button>
+          </div>
+        </div>
+      `;
+      // fallback de imagen si 404
+      const img = art.querySelector('img');
+      img.addEventListener('error', onImgError);
+
+      grid.appendChild(art);
+    });
   });
 
-  console.log(`Render OK: ${productos.length} productos`);
+  console.log(`✅ ${productos.length} productos renderizados en ${keys.length} categorías`);
 }
-
 
 // =================== EVENTOS PÁGINA PRODUCTOS ===================
 function initProductosPage() {
   const itemsContainer = document.querySelector('main');
-  if (!itemsContainer) return; // no rompe en otras páginas
+  if (!itemsContainer) return;
 
   itemsContainer.addEventListener('click', (e) => {
     const btn = e.target.closest('.btn-add');
@@ -180,6 +242,20 @@ function initProductosPage() {
     }
 
     addToCart(id, cantidad);
+    console.log(`🛒 +${cantidad} x #${id}`);
+
+    // feedback visual
+    const originalText = btn.textContent;
+    btn.textContent = '✓ Agregado';
+    btn.style.backgroundColor = '#28a745';
+    btn.style.color = '#fff';
+    btn.disabled = true;
+    setTimeout(() => {
+      btn.textContent = originalText;
+      btn.style.backgroundColor = '';
+      btn.style.color = '';
+      btn.disabled = false;
+    }, 1200);
   });
 }
 
@@ -214,21 +290,18 @@ function initCarritoPage() {
       li.className = 'carrito-item';
       li.innerHTML = `
         <div class="thumb">
-          <img src="${imgSrc(p.imagen)}" alt="${p.nombre}">
+          <img src="${imgSrc(p.imagen)}" alt="${p.nombre}" onerror="this.onerror=null;this.src='Imagenes/placeholder.png'">
         </div>
-
         <div class="info">
           <strong>${p.nombre.replace(/_/g,' ')}</strong>
           <small>$ ${fmt(p.precio)} c/u</small>
         </div>
-
         <div class="controls">
           <button class="btn-qty" data-action="menos" data-id="${p.id}">-</button>
           <span class="cant">${cant}</span>
           <button class="btn-qty" data-action="mas" data-id="${p.id}">+</button>
           <button class="btn-remove" data-action="del" data-id="${p.id}"><img src="Imagenes/basura.png" alt="Quitar"></button>
         </div>
-
         <div class="subtotal">$ ${fmt(subtotal)}</div>
       `;
       $lista.appendChild(li);
@@ -253,9 +326,10 @@ function initCarritoPage() {
   });
 
   $vaciar?.addEventListener('click', () => {
-    alert("Carrito vacio");
-    emptyCart();
-    renderCarrito();
+    if (confirm('¿Vaciar el carrito?')) {
+      emptyCart();
+      renderCarrito();
+    }
   });
 
   $continuar?.addEventListener('click', () => {
@@ -290,30 +364,53 @@ function buildOrderPayload() {
 
   const nombre    = document.querySelector('input[name="nombre"]')?.value?.trim() || '';
   const telefono  = document.querySelector('input[name="telefono"]')?.value?.trim() || '';
+  const ciudad    = document.querySelector('input[name="ciudad"]')?.value?.trim() || '';
   const direccion = document.querySelector('input[name="direccion"]')?.value?.trim() || '';
   const notas     = document.querySelector('textarea[name="notas"]')?.value?.trim() || '';
 
+  // Cadena legible de productos (por si tu hoja la usa)
+  const productosStr = items.map(it => `${it.nombre} (x${it.cantidad}) - ${fmt(it.precioUnit)} c/u`).join('; ');
+
   return {
     timestamp: new Date().toISOString(),
-    nombre, telefono, direccion, notas,
-    items,
-    total: Number(total.toFixed(2))
+    nombre, telefono, ciudad, direccion,
+    otros_datos: notas,
+    productos: productosStr,
+    valor_total: Number(total.toFixed(2)),
+    items // también envío el arreglo crudo por si lo quieres guardar como JSON
   };
 }
 
 async function enviarPedido() {
   const payload = buildOrderPayload();
-  const res = await fetch(API, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    const txt = await res.text().catch(() => '');
-    throw new Error(`No se pudo enviar el pedido.\n${txt}`);
+
+  // Opcional: timeout para evitar que la promesa quede colgada si la red falla
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort('timeout'), 15000);
+
+  try {
+    const res = await fetch(API, {
+      method: 'POST',
+      // 👇 SIN headers Content-Type → evita preflight OPTIONS
+      // headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),   // tu GAS seguirá haciendo JSON.parse(e.postData.contents)
+      cache: 'no-store',
+      redirect: 'follow',
+      signal: controller.signal,
+    });
+
+    const text = await res.text().catch(() => '');
+    if (!res.ok) {
+      throw new Error(`Error HTTP ${res.status}: ${text}`);
+    }
+
+    // Si el servidor devolviera JSON, lo intento parsear (no es obligatorio):
+    try { return JSON.parse(text); } catch { return null; }
+  } finally {
+    clearTimeout(t);
   }
 }
+
 
 function initDetalleCompraPage() {
   const $pagar = document.getElementById('pagar');
@@ -330,6 +427,7 @@ function initDetalleCompraPage() {
       await enviarPedido();
       alert("Pedido finalizado con éxito");
       emptyCart();
+      window.location.href = 'index.html';
     } catch (err) {
       console.error(err);
       alert(err.message || 'Error enviando pedido');
@@ -339,16 +437,17 @@ function initDetalleCompraPage() {
 
 // =================== BOOTSTRAP ===================
 document.addEventListener('DOMContentLoaded', async () => {
+  console.log('🚀 Inicializando…');
   try {
-    await loadProductos();                 // muestra/oculta loader internamente
-    renderProductosIfNeeded();             // si el HTML del catálogo es dinámico
+    await loadProductos();          // con espera mínima, retry y sin alertas falsas
+    renderProductosIfNeeded();      // vista por categorías
     initProductosPage();
     initCarritoPage();
     initDetalleCompraPage();
-    // testAPI(); // <- opcional para depurar (ver abajo)
+    console.log('✅ Listo');
   } catch (e) {
+    // loadProductos ya mostró alerta tras 2 fallos; aquí solo garantizamos ocultar loader
     hideLoader();
-    console.error(e);
-    alert('No se pudieron cargar los productos. Intenta más tarde.');
+    console.error('❌ Error crítico:', e);
   }
 });
