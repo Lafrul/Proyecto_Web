@@ -414,7 +414,7 @@ async function enviarPedido() {
     clearTimeout(t);
     emptyCart();
   }
-  emptyCart()
+  emptyCart();
 }
 
 
