@@ -123,6 +123,7 @@ async function loadProductos() {
       rows = await tryOnce();
     } catch (e2) {
       console.error('Segundo intento falló:', e2);
+      // espera del spinner antes de alertar
       const elapsed = performance.now() - start;
       const remaining = Math.max(0, MIN_SPINNER_MS - elapsed);
       await sleep(remaining);
@@ -133,6 +134,7 @@ async function loadProductos() {
     }
   }
 
+  // Mapear columnas
   productos = rows.map((r, idx) => {
     const id = Number(r.IdProducto ?? r.id ?? (idx + 1));
     const nombre = String(r.Nombre ?? r.nombre ?? `Producto ${id}`);
@@ -191,6 +193,7 @@ function renderProductosIfNeeded() {
     `;
     $main.appendChild(catHeader);
 
+    // contenedor
     const section = document.createElement('section');
     const grid = document.createElement('div');
     section.appendChild(grid);
@@ -377,12 +380,14 @@ function buildOrderPayload() {
 
   const total = items.reduce((acc, it) => acc + it.subtotal, 0);
 
+  // ⚠️ Campos del formulario en detalleCompra.html
   const nombre    = document.querySelector('input[name="name"]')?.value?.trim() || '';
   const telefono  = document.querySelector('input[name="telephone"]')?.value?.trim() || '';
   const ciudad    = document.querySelector('select[name="ciudad"]')?.value?.trim() || '';
   const direccion = document.querySelector('input[name="direccion"]')?.value?.trim() || '';
   const otros     = document.querySelector('input[name="otros"]')?.value?.trim() || '';
 
+  // Cadena legible (opcional) y total numérico
   const productosStr = items
     .map(it => `${it.nombre} (x${it.cantidad}) - ${fmt(it.precioUnit)} c/u`)
     .join('; ');
@@ -409,8 +414,9 @@ async function enviarPedido() {
   try {
     const res = await fetch(API, {
       method: 'POST',
-      // SIN headers Content-Type → evita preflight OPTIONS (GAS hace JSON.parse(e.postData.contents))
+
       body: JSON.stringify(payload),
+
       cache: 'no-store',
       redirect: 'follow',
       signal: controller.signal,
@@ -426,6 +432,7 @@ async function enviarPedido() {
     clearTimeout(t);
     emptyCart(); // seguridad extra
   }
+  emptyCart();
 }
 
 function initDetalleCompraPage() {
@@ -471,7 +478,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     resetCartOnFirstVisit();        // carrito vacío por sesión (quítalo si no lo quieres)
     await loadProductos();          // con espera mínima, retry y sin alertas falsas
-    renderProductosIfNeeded();      // vista por categorías (si aplica)
+    renderProductosIfNeeded();    
     initProductosPage();
     initCarritoPage();
     initDetalleCompraPage();
