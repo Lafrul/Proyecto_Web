@@ -6,7 +6,7 @@ const fmt = n => Number(n).toFixed(2);
 
 // Control de UX en carga
 const MIN_SPINNER_MS = 700;     // spinner mínimo para evitar parpadeo
-const FETCH_TIMEOUT_MS = 8000;  // timeout por intento
+const FETCH_TIMEOUT_MS = 8000;  // timeout por intento (GET)
 const RETRY_DELAY_MS = 1200;    // backoff antes del reintento
 
 // =================== ESTADO ===================
@@ -68,15 +68,24 @@ function resetCartOnFirstVisit() {
   }
 }
 
+// ======= VACÍO GARANTIZADO ENTRE PÁGINAS =======
+function forceClearOnNextPage() {
+  sessionStorage.setItem('clear_cart_after_order', '1');
+}
+function clearCartIfRequested() {
+  if (sessionStorage.getItem('clear_cart_after_order') === '1') {
+    emptyCart();
+    sessionStorage.removeItem('clear_cart_after_order');
+  }
+}
+
 // =================== UTILES DE RED ===================
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-
 async function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort('timeout'), timeoutMs);
   try {
-    const res = await fetch(url, { ...options, signal: ctrl.signal });
-    return res;
+    return await fetch(url, { ...options, signal: ctrl.signal });
   } finally {
     clearTimeout(t);
   }
@@ -141,8 +150,6 @@ async function loadProductos() {
     return { id, nombre, descripcion, precio, imagen, categoria };
   }).filter(p => p.nombre && Number.isFinite(p.precio));
 
-  console.log('Productos cargados:', productos.length);
-
   const elapsed = performance.now() - start;
   const remaining = Math.max(0, MIN_SPINNER_MS - elapsed);
   await sleep(remaining);
@@ -175,7 +182,6 @@ function renderProductosIfNeeded() {
     (categorias[cat] ||= []).push(p);
   });
   const keys = Object.keys(categorias).sort();
-  console.log('Categorías:', keys);
 
   keys.forEach(categoria => {
     const catHeader = document.createElement('h3');
@@ -211,8 +217,6 @@ function renderProductosIfNeeded() {
       grid.appendChild(art);
     });
   });
-
-  console.log(`${productos.length} productos renderizados en ${keys.length} categorías`);
 }
 
 // =================== EVENTOS PÁGINA PRODUCTOS ===================
@@ -330,11 +334,10 @@ function initCarritoPage() {
     if (action === 'menos') removeOne(id);
     if (action === 'del')   removeAll(id);
 
-    // re-render rápido sin spinner para evitar parpadeo
-    renderCarrito({ withSpinner: false });
+    renderCarrito({ withSpinner: false }); // sin parpadeo
   });
 
-  // Vaciar carrito (con loader breve y confirmación)
+  // Vaciar carrito (con loader breve)
   $vaciar?.addEventListener('click', async () => {
     if (confirm('¿Vaciar el carrito?')) {
       emptyCart();
@@ -398,7 +401,6 @@ function buildOrderPayload() {
   };
 }
 
-
 async function enviarPedido() {
   const payload = buildOrderPayload();
 
@@ -408,8 +410,7 @@ async function enviarPedido() {
   try {
     const res = await fetch(API, {
       method: 'POST',
-      // SIN headers Content-Type → evita preflight OPTIONS
-      // headers: { 'Content-Type': 'application/json' },
+      // SIN headers Content-Type → evita preflight OPTIONS en GAS
       body: JSON.stringify(payload),
       cache: 'no-store',
       redirect: 'follow',
@@ -424,6 +425,8 @@ async function enviarPedido() {
     try { return JSON.parse(text); } catch { return null; }
   } finally {
     clearTimeout(t);
+    // Primer cinturón de seguridad
+    emptyCart();
   }
 }
 
@@ -431,7 +434,7 @@ function initDetalleCompraPage() {
   const $pagar = document.getElementById('pagar');
   if (!$pagar) return;
 
-  // Asegurar que NO haga submit nativo
+  // Garantiza que NO haga submit nativo
   if ($pagar.getAttribute('type') !== 'button') {
     $pagar.setAttribute('type', 'button');
   }
@@ -439,13 +442,13 @@ function initDetalleCompraPage() {
   const form = document.querySelector('form');
   if (form) {
     form.addEventListener('submit', (e) => {
-      e.preventDefault();              // bloquea reload
-      $pagar.click();                  // reutiliza la misma lógica
+      e.preventDefault();   // bloquea reload
+      $pagar.click();       // reutiliza la lógica del botón
     });
   }
 
   $pagar.addEventListener('click', async (e) => {
-    e.preventDefault();                // bloquea submit implícito del botón
+    e.preventDefault();
     if ($pagar.dataset.loading === '1') return;
 
     if (form && !form.checkValidity()) {
@@ -459,14 +462,18 @@ function initDetalleCompraPage() {
       const original = $pagar.textContent;
       $pagar.textContent = 'Enviando…';
 
-      await enviarPedido();            // hace POST
+      await enviarPedido();       // POST a GAS (emptyCart en finally)
+      emptyCart();                // Segundo cinturón
+      forceClearOnNextPage();     // Tercero: vacía al cargar la siguiente página
+
       alert("Pedido finalizado con éxito");
       window.location.href = 'index.html';
     } catch (err) {
       console.error(err);
       alert(err.message || 'Error enviando pedido');
     } finally {
-      emptyCart();                     // <-- AHORA SÍ se ejecuta siempre
+      // Cuarto cinturón por si algo falla antes de navegar
+      emptyCart();
       $pagar.disabled = false;
       $pagar.textContent = 'Pagar';
       delete $pagar.dataset.loading;
@@ -478,12 +485,13 @@ function initDetalleCompraPage() {
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('Inicializando…');
   try {
-    resetCartOnFirstVisit();        // <<< NUEVO: vacía carrito una vez por sesión
-    await loadProductos();          // con espera mínima, retry y sin alertas falsas
-    renderProductosIfNeeded();      // vista por categorías
+    clearCartIfRequested();       // vacía si quedó marcado desde la compra anterior
+    resetCartOnFirstVisit();      // vacía la primera vez de la sesión
+    await loadProductos();        // carga catálogo (con loader y retry)
+    renderProductosIfNeeded();    // render catálogo (si aplica)
     initProductosPage();
-    initCarritoPage();              // con loader en el render
-    initDetalleCompraPage();
+    initCarritoPage();            // carrito con loader
+    initDetalleCompraPage();      // pago con vaciado garantizado
     console.log('Listo');
   } catch (e) {
     hideLoader();
