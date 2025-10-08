@@ -2,99 +2,7 @@ const API = 'https://script.google.com/macros/s/AKfycby1PE8A1GbuEkiSefoqRujAGhnN
 
 /* lista de productos */
 
-const productos = [
-    // Mixes
-    {
-      id: 1,
-      nombre: 'Mix (125 gr)',
-      precio: 8500,
-      imagen: 'mix.jpeg'
-    },
-    {
-      id: 2,
-      nombre: 'Mix de hojas verdes (125 gr)',
-      precio: 8500,
-      imagen: 'mixverde.png'
-    },
-
-    // Bolsas sencillas
-    {
-      id: 3,
-      nombre: 'Bolsa de lechuga Romana (125 gr)',
-      precio: 8500,
-      imagen: 'romana.png'
-    },
-    {
-      id: 4,
-      nombre: 'Bolsa de Kale (100 gr)',
-      precio: 8500,
-      imagen: 'kale.png'
-    },
-    {
-      id: 5,
-      nombre: 'Bolsa de lechuga Salanova lisa verde',
-      precio: 8500,
-      imagen: 'bolsaSalanova.png'
-    },
-
-    // Lechugas enteras
-    {
-      id: 6,
-      nombre: 'Lechuga Salanova lisa verde',
-      precio: 6000,
-      imagen: 'SalanovaCompleta.jpeg'
-    },
-    {
-      id: 7,
-      nombre: 'Lechuga Salanova lisa morada',
-      precio: 6000,
-      imagen: 'salanovaLisaMorada.png'
-    },
-    {
-      id: 8,
-      nombre: 'Lechuga Salanova crespa verde',
-      precio: 6000,
-      imagen: 'salanovaCrespaVerde.png'
-    },
-    {
-      id: 9,
-      nombre: 'Lechuga Salanova crespa morada',
-      precio: 6000,
-      imagen: 'salanovaCrespaMorada.png'
-    },
-    {
-      id: 10,
-      nombre: 'Lechuga Salanova roble verde',
-      precio: 6000,
-      imagen: 'salanovaRobleVerde.png'
-    },
-    {
-      id: 11,
-      nombre: 'Lechuga Salanova roble morada',
-      precio: 6000,
-      imagen: 'salanovaRobleMorada.png'
-    },
-
-    // Otros productos
-    {
-      id: 12,
-      nombre: 'Chimichurri (180 gr)',
-      precio: 18000,
-      imagen: 'Chimi.jpeg'
-    },
-    {
-      id: 13,
-      nombre: 'Chocoteja',
-      precio: 4000,
-      imagen: 'chocoteja.png'
-    },
-    {
-      id: 14,
-      nombre: 'Mermelada (250 gr)',
-      precio: 18000,
-      imagen: 'mermelada.png'
-    }
-];
+let productos = [];
 
 /* ------------------------------------------------------------------------------ */
 
@@ -112,6 +20,40 @@ function getCart() {
 function setCart(cart) { localStorage.setItem(KEY, JSON.stringify(cart)); }
 
 /* ------------------------------------------------------------------------------ */
+
+/* Carga de productos */
+
+async function loadProductos() {
+  showLoader();
+  try {
+    const res = await fetch(API, { method: 'GET' });
+    if (!res.ok) throw new Error('No se pudo cargar la lista de productos');
+    const json = await res.json();
+    const rows = Array.isArray(json?.data) ? json.data : [];
+
+
+    productos = rows
+      .map((r, idx) => {
+        const id = Number(r.IdProducto ?? r.id ?? (idx + 1));
+        const nombre = String(r.Nombre ?? r.nombre ?? `Producto ${id}`);
+        const descripcion = String(r['Descripción'] ?? r.Descripción ?? r.descripcion ?? '');
+        const precio = Number(
+          String(r.Precio ?? r.precio ?? 0)
+            .replace(/[^\d.,-]/g, '')
+            .replace(/\.(?=\d{3}\b)/g, '')
+            .replace(',', '.')
+        ) || 0;
+
+        const imagen = String(r.Imagen ?? r.imagen ?? '').trim();
+
+        const categoria = String(r.Categoria ?? r.categoria ?? '').trim();
+        return { id, nombre, descripcion, precio, imagen, categoria };
+      })
+      .filter(p => p.nombre && Number.isFinite(p.precio));
+  } finally {
+    hideLoader();
+  }
+}
 
 /* Operaciones */
 function addToCart(id, cantidad = 1) {
@@ -255,40 +197,92 @@ document.addEventListener('DOMContentLoaded', () => {
   const $pagar = document.getElementById('pagar');
   if (!$pagar) return;
 
-  $pagar.addEventListener('click', () => {
+  $pagar.addEventListener('click', async () => {
     const form = document.querySelector('form');
     if (form && !form.checkValidity()) {
-        form.reportValidity();
-        return;
+      form.reportValidity();
+      return;
     }
 
-    const cart = getCart();
-    const entries = Object.entries(cart);
-
-    const itemsStr = entries.map(([idStr, cant]) => {
-      const p = productos.find(pp => pp.id === Number(idStr));
-      return `${encodeURIComponent(p?.nombre ?? idStr)}:${cant}`;
-    }).join('|');
-
-    const totalNum = entries.reduce((acc, [idStr, cant]) => {
-      const p = productos.find(pp => pp.id === Number(idStr));
-      return acc + (p ? p.precio * cant : 0);
-    }, 0);
-
-    const params = new URLSearchParams();
-    params.set('items', itemsStr);
-    params.set('total', fmt(totalNum));
-
-    const nuevaURL = `${location.origin}${location.pathname}?${params.toString()}`;
-    history.replaceState(null, '', nuevaURL);
-
-    alert("Pedido finalizado con éxito");
-    emptyCart();
-});
+    try {
+      await enviarPedido();  // ← guarda en la hoja "Pedidos" con tu doPost
+      alert("Pedido finalizado con éxito");
+      emptyCart();
+    } catch (err) {
+      console.error(err);
+      alert(err.message || 'Error enviando pedido');
+    }
+  });
 });
 
 /* ===================== Bootstrap ===================== */
-document.addEventListener('DOMContentLoaded', () => {
-  initProductosPage();
-  initCarritoPage();
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    await loadProductos();     
+    if (typeof renderProductosIfNeeded === 'function') {
+      renderProductosIfNeeded();
+    }
+    initProductosPage();
+    initCarritoPage();
+  } catch (e) {
+    hideLoader();
+    console.error(e);
+    alert('No se pudieron cargar los productos. Intenta más tarde.');
+  }
 });
+
+/* ===================== mostrar ocultar vainito de carga ===================== */
+
+function showLoader() {
+  const img = document.getElementById('cargando');
+  if (img) img.style.display = 'block';
+}
+function hideLoader() {
+  const img = document.getElementById('cargando');
+  if (img) img.style.display = 'none';
+}
+
+
+/* ===================== Construye payload y hace POST a la API =====================*/
+function buildOrderPayload() {
+  const cart = getCart();
+  const entries = Object.entries(cart);
+
+  const items = entries.map(([idStr, cant]) => {
+    const p = productos.find(pp => pp.id === Number(idStr));
+    return {
+      id: Number(idStr),
+      nombre: p?.nombre ?? `id:${idStr}`,
+      cantidad: Number(cant),
+      precioUnit: p?.precio ?? 0,
+      subtotal: (p ? p.precio * cant : 0)
+    };
+  });
+
+  const total = items.reduce((acc, it) => acc + it.subtotal, 0);
+
+  const nombre    = document.querySelector('input[name="nombre"]')?.value?.trim() || '';
+  const telefono  = document.querySelector('input[name="telefono"]')?.value?.trim() || '';
+  const direccion = document.querySelector('input[name="direccion"]')?.value?.trim() || '';
+  const notas     = document.querySelector('textarea[name="notas"]')?.value?.trim() || '';
+
+  return {
+    timestamp: new Date().toISOString(),
+    nombre, telefono, direccion, notas,
+    items,
+    total: Number(total.toFixed(2))
+  };
+}
+
+async function enviarPedido() {
+  const payload = buildOrderPayload();
+  const res = await fetch(API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) {
+    const txt = await res.text().catch(() => '');
+    throw new Error(`No se pudo enviar el pedido.\n${txt}`);
+  }
+}
