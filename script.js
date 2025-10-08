@@ -398,6 +398,7 @@ function buildOrderPayload() {
   };
 }
 
+
 async function enviarPedido() {
   const payload = buildOrderPayload();
 
@@ -423,7 +424,6 @@ async function enviarPedido() {
     try { return JSON.parse(text); } catch { return null; }
   } finally {
     clearTimeout(t);
-    emptyCart(); // seguridad: siempre vacía tras intentar enviar
   }
 }
 
