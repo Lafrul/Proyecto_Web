@@ -172,7 +172,6 @@ function renderProductosIfNeeded() {
     emptyP.style.cssText = 'padding:1rem;color:#666';
     emptyP.textContent = 'No hay productos disponibles en este momento.';
     $main.appendChild(emptyP);
-    console.warn('Array de productos vacío');
     return;
   }
 
@@ -240,7 +239,6 @@ function initProductosPage() {
     }
 
     addToCart(id, cantidad);
-    console.log(`🛒 +${cantidad} x #${id}`);
 
     const originalText = btn.textContent;
     btn.textContent = '   ✓   ';
@@ -401,29 +399,26 @@ function buildOrderPayload() {
   };
 }
 
-// === POST sin CORS/errores visibles; no espera respuesta y permite navegar ===
+// === POST fire-and-forget usando fetch no-cors (GAS lo recibe) ===
 function enviarPedido() {
   const payload = buildOrderPayload();
+  const body = JSON.stringify(payload);
 
   try {
-    const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
-    const ok = navigator.sendBeacon(API, blob);
-
-    if (!ok) {
-      // Fallback no-bloqueante
-      fetch(API, {
-        method: 'POST',
-        body: JSON.stringify(payload),
-        cache: 'no-store',
-        mode: 'no-cors',
-        keepalive: true
-      }).catch(() => { /* ignorar errores */ });
-    }
+    // Disparo sin await para no bloquear ni leer respuesta (evita "Failed to fetch")
+    fetch(API, {
+      method: 'POST',
+      body,
+      cache: 'no-store',
+      mode: 'no-cors',   // sin CORS => no error en consola
+      keepalive: true    // sigue enviando aunque naveguemos
+      // (sin Content-Type explícito para evitar preflight; GAS hace JSON.parse(e.postData.contents))
+    });
   } catch (_) {
-    // Silenciar cualquier problema (igual vaciamos y navegamos)
+    // ignoramos cualquier error del navegador
   } finally {
     emptyCart();           // vaciar siempre
-    forceClearOnNextPage(); // por si la navegación es muy rápida
+    forceClearOnNextPage(); // por si navegamos muy rápido
   }
 }
 
@@ -455,16 +450,15 @@ function initDetalleCompraPage() {
     const original = $pagar.textContent;
     $pagar.textContent = 'Enviando…';
 
-    // Dispara “fire-and-forget” y navega SIEMPRE
-    enviarPedido(); // no-await
-    // Redirige con replace para no volver con “atrás”
-    setTimeout(() => { window.location.replace('index.html'); }, 100);
+    // Dispara el POST (no se espera) y redirige SIEMPRE
+    enviarPedido();
+    setTimeout(() => { window.location.replace('index.html'); }, 120);
 
-    // Restaurar UI por si el usuario no navega de inmediato (seguro extra)
+    // Restaurar UI si el usuario se queda (raro, pero seguro)
     setTimeout(() => {
       $pagar.disabled = false;
       $pagar.textContent = original || 'Pagar';
-    }, 500);
+    }, 600);
   });
 }
 
