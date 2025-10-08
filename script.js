@@ -4,7 +4,6 @@ const IMG_BASE = 'Imagenes/';
 const KEY = 'carrito_de_la_huerta';
 const fmt = n => Number(n).toFixed(2);
 
-// Control de UX en carga
 const MIN_SPINNER_MS = 700;     // spinner mínimo para evitar parpadeo
 const FETCH_TIMEOUT_MS = 8000;  // timeout por intento GET
 const RETRY_DELAY_MS = 1200;    // backoff antes del reintento
@@ -312,7 +311,7 @@ function initCarritoPage() {
     if (action === 'menos') removeOne(id);
     if (action === 'del')   removeAll(id);
 
-    renderCarrito({ withSpinner: false }); // sin parpadeo
+    renderCarrito({ withSpinner: false }); 
   });
 
   $vaciar?.addEventListener('click', async () => {
@@ -336,7 +335,7 @@ function initCarritoPage() {
 }
 
 // =================== DETALLE + POST PEDIDO ===================
-// URL robusta para ir a index.html en la MISMA carpeta del archivo actual
+
 function buildHomeUrl() {
   try {
     const u = new URL(window.location.href);
@@ -389,7 +388,6 @@ function buildOrderPayload() {
   };
 }
 
-// Envío NO bloqueante con límite de espera (race) y sin errores visibles
 async function enviarPedidoNoBloqueante() {
   const payload = buildOrderPayload();
   const body = JSON.stringify(payload);
@@ -400,20 +398,19 @@ async function enviarPedidoNoBloqueante() {
         method: 'POST',
         body,
         cache: 'no-store',
-        keepalive: true,  // sigue enviando aunque naveguemos
-        // SIN Content-Type para evitar preflight; GAS usa JSON.parse(e.postData.contents)
+        keepalive: true, 
       });
     } catch (err) {
-      // Silenciamos; muchas veces igual llega al GAS
+
       console.warn('Aviso: respuesta no legible o CORS/redirect.', err);
     }
   })();
 
-  // Damos una ventanita de 1200ms y seguimos (para no “quedarnos pegados”)
+
   const timeoutPromise = new Promise(r => setTimeout(r, 1200));
   await Promise.race([fetchPromise, timeoutPromise]);
 
-  // Vaciar ya mismo (y por si acaso al cargar la home también quedará vacío)
+  // Vaciate porfavoooooor
   emptyCart();
 }
 
@@ -421,7 +418,7 @@ function initDetalleCompraPage() {
   const $pagar = document.getElementById('pagar');
   if (!$pagar) return;
 
-  // Evitar submit nativo del form
+
   if ($pagar.getAttribute('type') !== 'button') {
     $pagar.setAttribute('type', 'button');
   }
@@ -451,15 +448,14 @@ function initDetalleCompraPage() {
     const homeUrl = buildHomeUrl();
 
     try {
-      // Enviar “fire-and-forget” con ventanita corta y sin errores visibles
+
       await enviarPedidoNoBloqueante();
     } finally {
-      // Restaurar UI por si el usuario cancela la navegación
+
       $pagar.disabled = false;
       $pagar.textContent = original || 'Pagar';
       delete $pagar.dataset.loading;
 
-      // Redirigir SIEMPRE (pequeño delay para salir del event loop)
       setTimeout(() => { window.location.replace(homeUrl); }, 150);
     }
   });
