@@ -12,7 +12,7 @@ const RETRY_DELAY_MS = 1200;    // backoff antes del reintento
 // =================== ESTADO ===================
 let productos = [];
 
-// =================== LOADER ===================
+// =================== LOADER (compartido) ===================
 function showLoader() {
   const img = document.getElementById('cargando');
   if (img) img.style.display = 'block';
@@ -40,7 +40,6 @@ function getCart() {
   catch { return {}; }
 }
 function setCart(cart) { localStorage.setItem(KEY, JSON.stringify(cart)); }
-
 function addToCart(id, cantidad = 1) {
   const cart = getCart();
   cart[id] = (cart[id] || 0) + cantidad;
@@ -60,9 +59,25 @@ function removeAll(id) {
 }
 function emptyCart() { setCart({}); }
 
+// =================== SESIÓN & CONFIRMACIONES ===================
+function resetCartOnFirstVisit() {
+  const FLAG = 'cart_session_started';
+  if (!sessionStorage.getItem(FLAG)) {
+    emptyCart(); // vacía solo una vez por sesión del navegador
+    sessionStorage.setItem(FLAG, '1');
+  }
+}
+function showOrderConfirmationIfAny() {
+  const url = new URL(location.href);
+  const ok = url.searchParams.get('ok') || sessionStorage.getItem('last_order_success');
+  if (ok) {
+    sessionStorage.removeItem('last_order_success');
+    setTimeout(() => alert('¡Gracias! Tu pedido fue recibido.'), 300);
+  }
+}
+
 // =================== UTILES DE RED ===================
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-
 async function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort('timeout'), timeoutMs);
@@ -79,7 +94,6 @@ async function loadProductos() {
   const start = performance.now();
   showLoader();
 
-  // función que hace 1 intento de fetch+parse
   const tryOnce = async () => {
     const res = await fetchWithTimeout(API, { method: 'GET', cache: 'no-store' });
     if (!res.ok) {
@@ -99,7 +113,6 @@ async function loadProductos() {
     return json.data;
   };
 
-  // hasta 2 intentos con backoff
   let rows;
   try {
     rows = await tryOnce();
@@ -110,19 +123,16 @@ async function loadProductos() {
       rows = await tryOnce();
     } catch (e2) {
       console.error('Segundo intento falló:', e2);
-      // espera mínima del spinner antes de alertar
       const elapsed = performance.now() - start;
       const remaining = Math.max(0, MIN_SPINNER_MS - elapsed);
       await sleep(remaining);
       hideLoader();
-      // alerta única después de 2 fallos
       alert(`No se pudieron cargar los productos.\n${e2.message}`);
       productos = [];
-      throw e2; // para que el bootstrap haga su catch también
+      throw e2;
     }
   }
 
-  // Mapear columnas de tu hoja
   productos = rows.map((r, idx) => {
     const id = Number(r.IdProducto ?? r.id ?? (idx + 1));
     const nombre = String(r.Nombre ?? r.nombre ?? `Producto ${id}`);
@@ -138,9 +148,6 @@ async function loadProductos() {
     return { id, nombre, descripcion, precio, imagen, categoria };
   }).filter(p => p.nombre && Number.isFinite(p.precio));
 
-  console.log('Productos cargados:', productos.length);
-
-  // asegurar spinner mínimo
   const elapsed = performance.now() - start;
   const remaining = Math.max(0, MIN_SPINNER_MS - elapsed);
   await sleep(remaining);
@@ -152,10 +159,8 @@ function renderProductosIfNeeded() {
   const $main = document.getElementById('main-productos');
   if (!$main) return;
 
-  // limpia todo menos el loader
   [...$main.children].forEach(n => { if (n.id !== 'cargando') n.remove(); });
 
-  // Título principal
   const h2 = document.createElement('h2');
   h2.textContent = 'Productos';
   $main.appendChild(h2);
@@ -169,18 +174,14 @@ function renderProductosIfNeeded() {
     return;
   }
 
-  // Agrupar por categoría
   const categorias = {};
   productos.forEach(p => {
     const cat = p.categoria || 'Sin Categoría';
     (categorias[cat] ||= []).push(p);
   });
   const keys = Object.keys(categorias).sort();
-  console.log('Categorías:', keys);
 
-  // Render por categoría
   keys.forEach(categoria => {
-    // cabecera visual de categoría
     const catHeader = document.createElement('h3');
     catHeader.textContent = categoria;
     catHeader.style.cssText = `
@@ -190,7 +191,6 @@ function renderProductosIfNeeded() {
     `;
     $main.appendChild(catHeader);
 
-    // contenedor esperado por tu CSS: <section><div>...</div></section>
     const section = document.createElement('section');
     const grid = document.createElement('div');
     section.appendChild(grid);
@@ -210,15 +210,11 @@ function renderProductosIfNeeded() {
           </div>
         </div>
       `;
-      // fallback de imagen si 404
       const img = art.querySelector('img');
       img.addEventListener('error', onImgError);
-
       grid.appendChild(art);
     });
   });
-
-  console.log(` ${productos.length} productos renderizados en ${keys.length} categorías`);
 }
 
 // =================== EVENTOS PÁGINA PRODUCTOS ===================
@@ -244,7 +240,6 @@ function initProductosPage() {
     addToCart(id, cantidad);
     console.log(`🛒 +${cantidad} x #${id}`);
 
-    // feedback visual
     const originalText = btn.textContent;
     btn.textContent = '   ✓   ';
     btn.style.backgroundColor = '#28a745';
@@ -259,7 +254,7 @@ function initProductosPage() {
   });
 }
 
-// =================== PÁGINA CARRITO ===================
+// =================== PÁGINA CARRITO (con loader) ===================
 function initCarritoPage() {
   const $lista  = document.getElementById('carrito-lista');
   const $total  = document.getElementById('total');
@@ -268,70 +263,89 @@ function initCarritoPage() {
 
   if (!$lista || !$total) return;
 
-  function renderCarrito() {
-    const cart = getCart();
-    $lista.innerHTML = '';
-    let total = 0;
+  async function renderCarrito({ withSpinner = true } = {}) {
+    const start = performance.now();
+    if (withSpinner) showLoader();
 
-    const entries = Object.entries(cart);
-    if (entries.length === 0) {
-      $lista.innerHTML = `<li class="empty">Tu carrito está vacío.</li>`;
-      $total.textContent = fmt(0);
-      return;
+    try {
+      const cart = getCart();
+      $lista.innerHTML = '';
+      let total = 0;
+
+      const entries = Object.entries(cart);
+      if (entries.length === 0) {
+        $lista.innerHTML = `<li class="empty">Tu carrito está vacío.</li>`;
+        $total.textContent = fmt(0);
+        return;
+      }
+
+      entries.forEach(([idStr, cant]) => {
+        const p = productos.find(pp => pp.id === Number(idStr));
+        if (!p) return;
+        const subtotal = p.precio * cant;
+        total += subtotal;
+
+        const li = document.createElement('li');
+        li.className = 'carrito-item';
+        li.innerHTML = `
+          <div class="thumb">
+            <img src="${imgSrc(p.imagen)}" alt="${p.nombre}" onerror="this.onerror=null;this.src='Imagenes/placeholder.png'">
+          </div>
+          <div class="info">
+            <strong>${p.nombre.replace(/_/g,' ')}</strong>
+            <small>$ ${fmt(p.precio)} c/u</small>
+          </div>
+          <div class="controls">
+            <button class="btn-qty" data-action="menos" data-id="${p.id}">-</button>
+            <span class="cant">${cant}</span>
+            <button class="btn-qty" data-action="mas" data-id="${p.id}">+</button>
+            <button class="btn-remove" data-action="del" data-id="${p.id}">
+              <img src="Imagenes/basura.png" alt="Quitar">
+            </button>
+          </div>
+          <div class="subtotal">$ ${fmt(subtotal)}</div>
+        `;
+        $lista.appendChild(li);
+      });
+
+      $total.textContent = fmt(total);
+    } finally {
+      if (withSpinner) {
+        const elapsed = performance.now() - start;
+        const remaining = Math.max(0, MIN_SPINNER_MS - elapsed);
+        await sleep(remaining);
+        hideLoader();
+      }
     }
-
-    entries.forEach(([idStr, cant]) => {
-      const p = productos.find(pp => pp.id === Number(idStr));
-      if (!p) return;
-      const subtotal = p.precio * cant;
-      total += subtotal;
-
-      const li = document.createElement('li');
-      li.className = 'carrito-item';
-      li.innerHTML = `
-        <div class="thumb">
-          <img src="${imgSrc(p.imagen)}" alt="${p.nombre}" onerror="this.onerror=null;this.src='Imagenes/placeholder.png'">
-        </div>
-        <div class="info">
-          <strong>${p.nombre.replace(/_/g,' ')}</strong>
-          <small>$ ${fmt(p.precio)} c/u</small>
-        </div>
-        <div class="controls">
-          <button class="btn-qty" data-action="menos" data-id="${p.id}">-</button>
-          <span class="cant">${cant}</span>
-          <button class="btn-qty" data-action="mas" data-id="${p.id}">+</button>
-          <button class="btn-remove" data-action="del" data-id="${p.id}"><img src="Imagenes/basura.png" alt="Quitar"></button>
-        </div>
-        <div class="subtotal">$ ${fmt(subtotal)}</div>
-      `;
-      $lista.appendChild(li);
-    });
-
-    $total.textContent = fmt(total);
   }
 
+  // Eventos de + / - / eliminar
   $lista.addEventListener('click', (e) => {
-    const btnQty = e.target.closest('.btn-qty, .btn-remove');
-    if (!btnQty) return;
+    const btn = e.target.closest('.btn-qty, .btn-remove');
+    if (!btn) return;
 
-    const action = btnQty.dataset.action;
-    const id = Number(btnQty.dataset.id);
+    const action = btn.dataset.action;
+    const id = Number(btn.dataset.id);
     if (!action || Number.isNaN(id)) return;
 
     if (action === 'mas')   addToCart(id, 1);
     if (action === 'menos') removeOne(id);
     if (action === 'del')   removeAll(id);
 
-    renderCarrito();
+    // re-render rápido sin spinner para evitar parpadeo
+    renderCarrito({ withSpinner: false });
   });
 
-  $vaciar?.addEventListener('click', () => {
+  // Vaciar carrito
+  $vaciar?.addEventListener('click', async () => {
     if (confirm('¿Vaciar el carrito?')) {
       emptyCart();
-      renderCarrito();
+      await renderCarrito({ withSpinner: true });
+      alert('Carrito vacío');
     }
   });
 
+  // Continuar a detalle
   $continuar?.addEventListener('click', () => {
     const cart = getCart();
     if (!Object.keys(cart).length) {
@@ -341,7 +355,8 @@ function initCarritoPage() {
     window.location.href = 'detalleCompra.html';
   });
 
-  renderCarrito();
+  // Primer render con spinner
+  renderCarrito({ withSpinner: true });
 }
 
 // =================== DETALLE + POST PEDIDO ===================
@@ -349,7 +364,6 @@ function buildOrderPayload() {
   const cart = getCart();
   const entries = Object.entries(cart);
 
-  // Arma los ítems con detalle
   const items = entries.map(([idStr, cant]) => {
     const p = productos.find(pp => pp.id === Number(idStr));
     return {
@@ -363,14 +377,12 @@ function buildOrderPayload() {
 
   const total = items.reduce((acc, it) => acc + it.subtotal, 0);
 
-  // ⚠️ Campos del formulario en detalleCompra.html
   const nombre    = document.querySelector('input[name="name"]')?.value?.trim() || '';
   const telefono  = document.querySelector('input[name="telephone"]')?.value?.trim() || '';
   const ciudad    = document.querySelector('select[name="ciudad"]')?.value?.trim() || '';
   const direccion = document.querySelector('input[name="direccion"]')?.value?.trim() || '';
   const otros     = document.querySelector('input[name="otros"]')?.value?.trim() || '';
 
-  // Cadena legible (opcional) y total numérico
   const productosStr = items
     .map(it => `${it.nombre} (x${it.cantidad}) - ${fmt(it.precioUnit)} c/u`)
     .join('; ');
@@ -384,10 +396,9 @@ function buildOrderPayload() {
     otros_datos: otros,
     productos: productosStr,
     valor_total: Number(total.toFixed(2)),
-    items // también enviamos el arreglo crudo
+    items
   };
 }
-
 
 async function enviarPedido() {
   const payload = buildOrderPayload();
@@ -398,9 +409,8 @@ async function enviarPedido() {
   try {
     const res = await fetch(API, {
       method: 'POST',
-      // 👇 SIN headers Content-Type → evita preflight OPTIONS
-      // headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),   // tu GAS seguirá haciendo JSON.parse(e.postData.contents)
+      // SIN headers Content-Type → evita preflight OPTIONS (GAS hace JSON.parse(e.postData.contents))
+      body: JSON.stringify(payload),
       cache: 'no-store',
       redirect: 'follow',
       signal: controller.signal,
@@ -411,20 +421,21 @@ async function enviarPedido() {
       throw new Error(`Error HTTP ${res.status}: ${text}`);
     }
 
-    // Si el servidor devolviera JSON, lo intento parsear (no es obligatorio):
     try { return JSON.parse(text); } catch { return null; }
   } finally {
     clearTimeout(t);
-    emptyCart();
+    emptyCart(); // seguridad extra
   }
 }
-
 
 function initDetalleCompraPage() {
   const $pagar = document.getElementById('pagar');
   if (!$pagar) return;
 
-  $pagar.addEventListener('click', async () => {
+  $pagar.addEventListener('click', async (e) => {
+    e.preventDefault(); // evita submit nativo del form
+    if ($pagar.dataset.loading === '1') return;
+
     const form = document.querySelector('form');
     if (form && !form.checkValidity()) {
       form.reportValidity();
@@ -432,13 +443,24 @@ function initDetalleCompraPage() {
     }
 
     try {
-      await enviarPedido();
-      emptyCart();
+      $pagar.dataset.loading = '1';
+      $pagar.disabled = true;
+      const original = $pagar.textContent;
+      $pagar.textContent = 'Enviando…';
+
+      await enviarPedido();   // POST y emptyCart() en finally
+      emptyCart();            // redundante pero seguro
+      sessionStorage.setItem('last_order_success', '1');
+
       alert("Pedido finalizado con éxito");
-      window.location.href = 'index.html';
+      window.location.href = 'index.html?ok=1';
     } catch (err) {
       console.error(err);
       alert(err.message || 'Error enviando pedido');
+    } finally {
+      $pagar.disabled = false;
+      $pagar.textContent = 'Pagar';
+      delete $pagar.dataset.loading;
     }
   });
 }
@@ -447,14 +469,15 @@ function initDetalleCompraPage() {
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('Inicializando…');
   try {
+    resetCartOnFirstVisit();        // carrito vacío por sesión (quítalo si no lo quieres)
     await loadProductos();          // con espera mínima, retry y sin alertas falsas
-    renderProductosIfNeeded();      // vista por categorías
+    renderProductosIfNeeded();      // vista por categorías (si aplica)
     initProductosPage();
     initCarritoPage();
     initDetalleCompraPage();
+    showOrderConfirmationIfAny();   // muestra “gracias” si vienes de pagar
     console.log('Listo');
   } catch (e) {
-    // loadProductos ya mostró alerta tras 2 fallos; aquí solo garantizamos ocultar loader
     hideLoader();
     console.error('Error crítico:', e);
   }
