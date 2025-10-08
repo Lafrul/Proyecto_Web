@@ -6,13 +6,13 @@ const fmt = n => Number(n).toFixed(2);
 
 // Control de UX en carga
 const MIN_SPINNER_MS = 700;     // spinner mínimo para evitar parpadeo
-const FETCH_TIMEOUT_MS = 8000;  // timeout por intento (para GET productos)
+const FETCH_TIMEOUT_MS = 8000;  // timeout por intento
 const RETRY_DELAY_MS = 1200;    // backoff antes del reintento
 
 // =================== ESTADO ===================
 let productos = [];
 
-// =================== LOADER (compartido) ===================
+// =================== LOADER ===================
 function showLoader() {
   const img = document.getElementById('cargando');
   if (img) img.style.display = 'block';
@@ -59,7 +59,7 @@ function removeAll(id) {
 }
 function emptyCart() { setCart({}); }
 
-// =================== SESIÓN & CONFIRMACIONES ===================
+// =================== RESET POR SESIÓN ===================
 function resetCartOnFirstVisit() {
   const FLAG = 'cart_session_started';
   if (!sessionStorage.getItem(FLAG)) {
@@ -67,17 +67,10 @@ function resetCartOnFirstVisit() {
     sessionStorage.setItem(FLAG, '1');
   }
 }
-function showOrderConfirmationIfAny() {
-  const url = new URL(location.href);
-  const ok = url.searchParams.get('ok') || sessionStorage.getItem('last_order_success');
-  if (ok) {
-    sessionStorage.removeItem('last_order_success');
-    setTimeout(() => alert('¡Gracias! Tu pedido fue recibido.'), 300);
-  }
-}
 
 // =================== UTILES DE RED ===================
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
 async function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort('timeout'), timeoutMs);
@@ -148,6 +141,8 @@ async function loadProductos() {
     return { id, nombre, descripcion, precio, imagen, categoria };
   }).filter(p => p.nombre && Number.isFinite(p.precio));
 
+  console.log('Productos cargados:', productos.length);
+
   const elapsed = performance.now() - start;
   const remaining = Math.max(0, MIN_SPINNER_MS - elapsed);
   await sleep(remaining);
@@ -180,6 +175,7 @@ function renderProductosIfNeeded() {
     (categorias[cat] ||= []).push(p);
   });
   const keys = Object.keys(categorias).sort();
+  console.log('Categorías:', keys);
 
   keys.forEach(categoria => {
     const catHeader = document.createElement('h3');
@@ -215,6 +211,8 @@ function renderProductosIfNeeded() {
       grid.appendChild(art);
     });
   });
+
+  console.log(`${productos.length} productos renderizados en ${keys.length} categorías`);
 }
 
 // =================== EVENTOS PÁGINA PRODUCTOS ===================
@@ -321,21 +319,22 @@ function initCarritoPage() {
 
   // Eventos de + / - / eliminar
   $lista.addEventListener('click', (e) => {
-    const btn = e.target.closest('.btn-qty, .btn-remove');
-    if (!btn) return;
+    const btnQty = e.target.closest('.btn-qty, .btn-remove');
+    if (!btnQty) return;
 
-    const action = btn.dataset.action;
-    const id = Number(btn.dataset.id);
+    const action = btnQty.dataset.action;
+    const id = Number(btnQty.dataset.id);
     if (!action || Number.isNaN(id)) return;
 
     if (action === 'mas')   addToCart(id, 1);
     if (action === 'menos') removeOne(id);
     if (action === 'del')   removeAll(id);
 
-    renderCarrito({ withSpinner: false }); // rápido, sin parpadeo
+    // re-render rápido sin spinner para evitar parpadeo
+    renderCarrito({ withSpinner: false });
   });
 
-  // Vaciar carrito
+  // Vaciar carrito (con loader breve y confirmación)
   $vaciar?.addEventListener('click', async () => {
     if (confirm('¿Vaciar el carrito?')) {
       emptyCart();
@@ -354,7 +353,7 @@ function initCarritoPage() {
     window.location.href = 'detalleCompra.html';
   });
 
-  // Primer render con spinner
+  // Primer render con loader
   renderCarrito({ withSpinner: true });
 }
 
@@ -399,34 +398,40 @@ function buildOrderPayload() {
   };
 }
 
-// POST “fire-and-forget” compatible con Apps Script sin CORS
 async function enviarPedido() {
   const payload = buildOrderPayload();
 
-  // Nota: no usamos el timeout propio aquí porque con 'no-cors'
-  // el navegador no expone estado; solo disparamos la solicitud.
-  // keepalive permite que el POST siga aunque redirijamos la página.
-  await fetch(API, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-    cache: 'no-store',
-    redirect: 'follow',
-    mode: 'no-cors',     // evita “TypeError: Failed to fetch” por CORS
-    keepalive: true      // estilo Beacon: no se corta al navegar
-  });
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort('timeout'), 15000);
 
-  // Con 'no-cors' la respuesta es opaca: no se puede leer ni validar.
-  // Si la WebApp de GAS ya estaba funcionando, esto es suficiente.
+  try {
+    const res = await fetch(API, {
+      method: 'POST',
+      // SIN headers Content-Type → evita preflight OPTIONS
+      // headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      cache: 'no-store',
+      redirect: 'follow',
+      signal: controller.signal,
+    });
+
+    const text = await res.text().catch(() => '');
+    if (!res.ok) {
+      throw new Error(`Error HTTP ${res.status}: ${text}`);
+    }
+
+    try { return JSON.parse(text); } catch { return null; }
+  } finally {
+    clearTimeout(t);
+    emptyCart(); // seguridad: siempre vacía tras intentar enviar
+  }
 }
 
 function initDetalleCompraPage() {
   const $pagar = document.getElementById('pagar');
   if (!$pagar) return;
 
-  $pagar.addEventListener('click', async (e) => {
-    e.preventDefault(); // evita submit nativo del form
-    if ($pagar.dataset.loading === '1') return;
-
+  $pagar.addEventListener('click', async () => {
     const form = document.querySelector('form');
     if (form && !form.checkValidity()) {
       form.reportValidity();
@@ -434,26 +439,13 @@ function initDetalleCompraPage() {
     }
 
     try {
-      $pagar.dataset.loading = '1';
-      $pagar.disabled = true;
-      const original = $pagar.textContent;
-      $pagar.textContent = 'Enviando…';
-
-      await enviarPedido();   // POST “beacon-like”
-      sessionStorage.setItem('last_order_success', '1');
+      await enviarPedido();   // hace POST y vacía en finally
+      emptyCart();            // redundante pero seguro
       alert("Pedido finalizado con éxito");
+      window.location.href = 'index.html';
     } catch (err) {
-      // Si por alguna razón el navegador aún lanza error, no bloqueamos la salida.
-      console.warn('Aviso: problema de red/CORS, pero es probable que el pedido se haya recibido en la hoja.', err);
-      sessionStorage.setItem('last_order_success', '1');
-      alert("Pedido enviado. Si ves duplicación, contáctanos por favor.");
-    } finally {
-      // Pase lo que pase: vaciamos y salimos (evita quedar “atrapado”)
-      emptyCart();
-      $pagar.disabled = false;
-      $pagar.textContent = 'Pagar';
-      delete $pagar.dataset.loading;
-      window.location.href = 'index.html?ok=1';
+      console.error(err);
+      alert(err.message || 'Error enviando pedido');
     }
   });
 }
@@ -462,13 +454,12 @@ function initDetalleCompraPage() {
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('Inicializando…');
   try {
-    resetCartOnFirstVisit();        // carrito vacío por sesión (quítalo si no lo quieres)
+    resetCartOnFirstVisit();        // <<< NUEVO: vacía carrito una vez por sesión
     await loadProductos();          // con espera mínima, retry y sin alertas falsas
-    renderProductosIfNeeded();      // vista por categorías (si aplica)
+    renderProductosIfNeeded();      // vista por categorías
     initProductosPage();
-    initCarritoPage();
+    initCarritoPage();              // con loader en el render
     initDetalleCompraPage();
-    showOrderConfirmationIfAny();   // muestra “gracias” si vienes de pagar
     console.log('Listo');
   } catch (e) {
     hideLoader();
