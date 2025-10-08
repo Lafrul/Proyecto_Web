@@ -110,7 +110,7 @@ async function loadProductos() {
       rows = await tryOnce();
     } catch (e2) {
       console.error('Segundo intento falló:', e2);
-      // espera mínima del spinner antes de alertar
+      // espera del spinner antes de alertar
       const elapsed = performance.now() - start;
       const remaining = Math.max(0, MIN_SPINNER_MS - elapsed);
       await sleep(remaining);
@@ -118,11 +118,11 @@ async function loadProductos() {
       // alerta única después de 2 fallos
       alert(`No se pudieron cargar los productos.\n${e2.message}`);
       productos = [];
-      throw e2; // para que el bootstrap haga su catch también
+      throw e2;
     }
   }
 
-  // Mapear columnas de tu hoja
+  // Mapear columnas
   productos = rows.map((r, idx) => {
     const id = Number(r.IdProducto ?? r.id ?? (idx + 1));
     const nombre = String(r.Nombre ?? r.nombre ?? `Producto ${id}`);
@@ -190,7 +190,7 @@ function renderProductosIfNeeded() {
     `;
     $main.appendChild(catHeader);
 
-    // contenedor esperado por tu CSS: <section><div>...</div></section>
+    // contenedor
     const section = document.createElement('section');
     const grid = document.createElement('div');
     section.appendChild(grid);
@@ -349,7 +349,6 @@ function buildOrderPayload() {
   const cart = getCart();
   const entries = Object.entries(cart);
 
-  // Arma los ítems con detalle
   const items = entries.map(([idStr, cant]) => {
     const p = productos.find(pp => pp.id === Number(idStr));
     return {
@@ -363,14 +362,14 @@ function buildOrderPayload() {
 
   const total = items.reduce((acc, it) => acc + it.subtotal, 0);
 
-  // ⚠️ Campos del formulario en detalleCompra.html
+
   const nombre    = document.querySelector('input[name="name"]')?.value?.trim() || '';
   const telefono  = document.querySelector('input[name="telephone"]')?.value?.trim() || '';
   const ciudad    = document.querySelector('select[name="ciudad"]')?.value?.trim() || '';
   const direccion = document.querySelector('input[name="direccion"]')?.value?.trim() || '';
   const otros     = document.querySelector('input[name="otros"]')?.value?.trim() || '';
 
-  // Cadena legible (opcional) y total numérico
+
   const productosStr = items
     .map(it => `${it.nombre} (x${it.cantidad}) - ${fmt(it.precioUnit)} c/u`)
     .join('; ');
@@ -398,9 +397,8 @@ async function enviarPedido() {
   try {
     const res = await fetch(API, {
       method: 'POST',
-      // 👇 SIN headers Content-Type → evita preflight OPTIONS
-      // headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),   // tu GAS seguirá haciendo JSON.parse(e.postData.contents)
+
+      body: JSON.stringify(payload),
       cache: 'no-store',
       redirect: 'follow',
       signal: controller.signal,
@@ -411,12 +409,12 @@ async function enviarPedido() {
       throw new Error(`Error HTTP ${res.status}: ${text}`);
     }
 
-    // Si el servidor devolviera JSON, lo intento parsear (no es obligatorio):
     try { return JSON.parse(text); } catch { return null; }
   } finally {
     clearTimeout(t);
     emptyCart();
   }
+  emptyCart()
 }
 
 
@@ -448,13 +446,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   console.log('Inicializando…');
   try {
     await loadProductos();          // con espera mínima, retry y sin alertas falsas
-    renderProductosIfNeeded();      // vista por categorías
+    renderProductosIfNeeded();    
     initProductosPage();
     initCarritoPage();
     initDetalleCompraPage();
     console.log('Listo');
   } catch (e) {
-    // loadProductos ya mostró alerta tras 2 fallos; aquí solo garantizamos ocultar loader
     hideLoader();
     console.error('Error crítico:', e);
   }
