@@ -431,21 +431,45 @@ function initDetalleCompraPage() {
   const $pagar = document.getElementById('pagar');
   if (!$pagar) return;
 
-  $pagar.addEventListener('click', async () => {
-    const form = document.querySelector('form');
+  // Asegurar que NO haga submit nativo
+  if ($pagar.getAttribute('type') !== 'button') {
+    $pagar.setAttribute('type', 'button');
+  }
+
+  const form = document.querySelector('form');
+  if (form) {
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();              // bloquea reload
+      $pagar.click();                  // reutiliza la misma lógica
+    });
+  }
+
+  $pagar.addEventListener('click', async (e) => {
+    e.preventDefault();                // bloquea submit implícito del botón
+    if ($pagar.dataset.loading === '1') return;
+
     if (form && !form.checkValidity()) {
       form.reportValidity();
       return;
     }
 
     try {
-      await enviarPedido();   // hace POST y vacía en finally
-      emptyCart();            // redundante pero seguro
+      $pagar.dataset.loading = '1';
+      $pagar.disabled = true;
+      const original = $pagar.textContent;
+      $pagar.textContent = 'Enviando…';
+
+      await enviarPedido();            // hace POST
       alert("Pedido finalizado con éxito");
       window.location.href = 'index.html';
     } catch (err) {
       console.error(err);
       alert(err.message || 'Error enviando pedido');
+    } finally {
+      emptyCart();                     // <-- AHORA SÍ se ejecuta siempre
+      $pagar.disabled = false;
+      $pagar.textContent = 'Pagar';
+      delete $pagar.dataset.loading;
     }
   });
 }
